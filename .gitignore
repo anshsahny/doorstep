@@ -1,0 +1,43 @@
+# secrets — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
+
+# node / web
+node_modules/
+web/dist/
+.vite/
+
+# aws / cdk / agentcore
+cdk.out/
+.aws-sam/
+.bedrock_agentcore/
+.bedrock_agentcore.yaml
+
+# local runtime artefacts
+.sessions/
+*.wav
+*.mp3
+recordings/
+logs/
+*.log
+
+# os / editors
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
