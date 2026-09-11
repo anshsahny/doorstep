@@ -1,0 +1,16 @@
+{
+  "name": "doorstep-tooling",
+  "private": true,
+  "description": "Dev tooling for Doorstep (AgentCore CLI, AWS CDK). Run with Node 22 from /opt/homebrew/opt/node@22/bin; the global Node stays on v20.",
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "scripts": {
+    "agentcore": "agentcore",
+    "cdk": "cdk"
+  },
+  "devDependencies": {
+    "@aws/agentcore": "0.28.1",
+    "aws-cdk": "2.1141.0"
+  }
+}
