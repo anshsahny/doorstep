@@ -18,7 +18,7 @@ Doorstep is Ansh's entry for the AWS "Agents for Humans" hackathon on Devpost (G
 - **One phase at a time.** Do not start the next phase until the current phase's gate passes and Ansh says "go".
 - **Plan before editing.** At the start of a phase or large task, propose a short plan (files, commands, human steps needed, risks). If it deviates from PLAN.md, wait for approval.
 - **Small, verified steps.** Run the relevant tests after every meaningful change. Prefer minimal, precise diffs over rewrites.
-- **Close every work block** by updating `docs/PROGRESS.md` (done / verified how / next / blockers / decisions), committing with a clear message, and summarizing for Ansh what was verified and how.
+- **Close every work block** by updating `docs/PROGRESS.md` (done / verified how / next / blockers / decisions), running lint and tests, and summarizing for Ansh what was verified and how. Leave the changes in the working tree: Ansh commits each phase himself in one go. Claude never runs `git commit`, `git push` or `git reset`.
 - **If the plan is wrong, stop.** Explain, propose the smallest change, and record the decision in PROGRESS.md.
 - **Time boxes are real.** If a task runs 50% over its box, stop and offer the phase's cut line.
 - **Human steps.** When something needs Ansh (console clicks, phone verification, secrets, recording), say exactly what to do, then wait.
@@ -82,8 +82,9 @@ Ansh's global Node must stay on **v20** (Homebrew `node@20`) for his day job.
 
 ## Commands (keep this list current)
 
-- `make setup` — create venv, install deps, install pre-commit hooks
-- `make test` / `make lint`
+- `make setup` — install Python 3.12 via uv, sync all deps, install pre-commit hooks, `npm install` (Node 22)
+- `make test` / `make lint` / `make fmt` / `make check` (lint + tests) / `make node-check`
+- `make smoke-01` … `make smoke-05` — Phase 0 smoke tests (`ARGS=--audio`, `ARGS=--whoami`, `ARGS=teardown`); see `scripts/smoke/README.md`
 - `make local-drill` — run a drill locally with simulated residents (terminal board)
 - `make deploy` — CDK deploy + AgentCore deploy
 - `make evals` — run eval suites, write `evals/REPORT.md`
@@ -107,4 +108,4 @@ tests/
 
 ## Definition of done (any task)
 
-Code and tests pass locally. A manual check is done for UI or voice changes. PROGRESS.md is updated. Changes are committed.
+Code and tests pass locally. A manual check is done for UI or voice changes. PROGRESS.md is updated. Changes are left in the working tree for Ansh to commit.
