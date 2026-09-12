@@ -17,10 +17,13 @@ common:
   voicemail_es: "Le llama el equipo vecinal de {org_name} por {hazard_short}. Volveremos a intentarlo pronto."
 
 # Step 2 of the protocol is the same for every hazard; steps 3-5 come from the profile.
+# `required: true` means a call that never gets an answer to it has not established how the
+# resident is, so it cannot be classified OK (see agents/classifier.py).
 checkin_questions:
   - id: feeling
     en: "How are you feeling right now?"
     es: "¿Cómo se siente ahora mismo?"
+    required: true
 
 # Deterministic backstop rules shared by every hazard. Matching is case-insensitive on the
 # resident's own words. Single-word phrases are skipped when a negation ("not", "no", "never")

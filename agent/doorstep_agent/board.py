@@ -53,6 +53,8 @@ def render(ctx: RunContext, *, wall_seconds: float, tail: int = 8) -> str:
         f"{wall_seconds:5.0f}s elapsed",
         f"Alert: {incident.alert.event} ({incident.alert.severity}) {incident.alert.vtec or ''}"
         f" | incident {incident.status}",
+        "data: fictional roster and personas (data/roster.json, evals/personas); "
+        "real archived NWS alert text",
         "",
         f"{'id':4} {'wave':4} {'pts':3} {'name':18} {'state':11} {'att':3} result",
         "-" * 100,
