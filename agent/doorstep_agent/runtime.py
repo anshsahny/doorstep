@@ -48,6 +48,10 @@ class RunContext:
     outbox: list[OutboundMessage] = field(default_factory=list)
     extras: dict[str, Any] = field(default_factory=dict)
     channel_override: str | None = None
+    # A pre-built Strands model provider that replaces the configured Bedrock model. Tests and
+    # evals set it to drive the real agents — real tools, hooks, policies and sessions — without
+    # a network call; production leaves it None.
+    model_override: Any = None
 
     @property
     def channel(self) -> str:

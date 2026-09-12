@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
 from doorstep_agent.audit import AuditLog
+from doorstep_agent.config import settings
 from doorstep_agent.models import Alert, Incident, ResidentCase
 from doorstep_agent.profiles import load_profile
 from doorstep_agent.risk import score_all
@@ -22,7 +24,11 @@ ALERT_FIXTURE = DATA / "alerts" / "2021-06-pqr-excessive-heat-warning.json"
 
 
 def make_ctx(
-    mode: str = "drill", *, auto_approve: bool = True, profile_id: str = "heat"
+    mode: str = "drill",
+    *,
+    auto_approve: bool = True,
+    profile_id: str = "heat",
+    sessions_dir: Path | None = None,
 ) -> RunContext:
     roster = json.loads((DATA / "roster.json").read_text())
     store = InMemoryStore.from_data_dir(DATA, resident_ids=roster["drill_subset"])
@@ -37,6 +43,10 @@ def make_ctx(
     )
     for rid, score in score_all(store.residents(), profile).items():
         store.save_case(ResidentCase(incident_id=incident_id, resident_id=rid, risk=score))
+    cfg = settings()
+    if sessions_dir is not None:
+        # Paused sessions must land in the test's own tmp dir, never in the repo's .sessions/.
+        cfg = replace(cfg, sessions_dir=sessions_dir)
     return RunContext(
         store=store,
         incident_id=incident_id,
@@ -46,6 +56,7 @@ def make_ctx(
         clock=clock,
         policy=CasePolicy(clock, max_attempts=3, retry_interval_minutes=10),
         audit=AuditLog(store, incident_id),
+        settings=cfg,
         alert_severity=alert.severity,
         auto_approve=auto_approve,
     )

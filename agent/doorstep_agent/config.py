@@ -31,6 +31,8 @@ class Settings:
     model_persona: str
     data_dir: Path
     policies_dir: Path
+    # Where paused agent sessions are persisted locally (Phase 3 moves the bytes to S3).
+    sessions_dir: Path
     # Which hazard profile this deployment runs, and the replay fixture for drills. This is
     # configuration: the agents, tools, policies and prompts never name a hazard themselves.
     default_profile: str = "heat"
@@ -46,6 +48,11 @@ class Settings:
     drill_concurrency: int = 6
     # Longest text check-in, in agent turns.
     checkin_max_turns: int = 6
+    # How long a human decision stays answerable before it expires (SPEC §4 is silent; a
+    # decision nobody answers must fail safe rather than sit pending forever). This is **real**
+    # minutes and is never compressed by drill mode: the captain reading it is a real person at
+    # real speed. `make telegram-drill ARGS=--decision-ttl 0.5` shortens it to demo expiry.
+    decision_ttl_minutes: float = 15.0
     # Hard ceiling on any single model-backed step (one agent turn, one persona reply, one
     # classification, one dispatch). A step that overruns is treated as failed, never retried
     # forever, so a drill always finishes.
@@ -62,6 +69,7 @@ def settings() -> Settings:
         model_persona=os.getenv("DOORSTEP_MODEL_PERSONA", "us.amazon.nova-micro-v1:0"),
         data_dir=ROOT / "data",
         policies_dir=ROOT / "agent" / "policies",
+        sessions_dir=Path(os.getenv("DOORSTEP_SESSIONS_DIR", str(ROOT / ".sessions"))),
         default_profile=os.getenv("DOORSTEP_PROFILE", "heat"),
         default_alert_fixture=Path(
             os.getenv(

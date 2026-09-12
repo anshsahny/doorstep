@@ -7,10 +7,15 @@ pass (all cases settled, both urgent personas escalated, zero policy violations,
 
 Options:
   --auto-approve      a simulated captain takes the first option of every pending decision
+  --telegram          send decisions and tasks to the real roster chats and wait for real taps.
+                      Off by default: a drill must not reach anyone's phone unless asked.
   --profile heat      hazard profile id
   --alert PATH        alert fixture (NWS alerts-API shape)
   --concurrency N     simulated check-ins in flight at once (default from settings)
-  --compression F     time compression (default 30: 10 incident minutes = 20 s)
+  --compression F     time compression (default 30: 10 incident minutes = 20 s). Agent timers
+                      only; a human's deadline to answer is never compressed.
+  --decision-ttl M    real minutes a decision stays answerable (default 15). Use a small value
+                      such as 0.5 to demonstrate a decision expiring.
   --timeout S         stop scheduling after S seconds (default 240)
   --no-board          only print the final board and report
   --no-clear          do not clear the screen between board refreshes
@@ -28,21 +33,60 @@ from doorstep_agent import board
 from doorstep_agent.drill import DrillRunner
 
 
+def build_telegram():
+    """A real Telegram channel, or a clear error about what is missing from .env.
+
+    The volunteer chat ids are optional: one phone can play both parts by pointing
+    TELEGRAM_VOLUNTEER_CHAT_IDS at the captain's own chat, which is what a solo run does.
+    """
+    import os
+
+    from doorstep_agent.notify import Bot, TelegramNotifier
+
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    captain = os.getenv("TELEGRAM_CAPTAIN_CHAT_ID", "").strip()
+    missing = [
+        name
+        for name, value in (("TELEGRAM_BOT_TOKEN", token), ("TELEGRAM_CAPTAIN_CHAT_ID", captain))
+        if not value
+    ]
+    if missing:
+        raise SystemExit(f"--telegram needs {' and '.join(missing)} in .env")
+    if not os.getenv("TELEGRAM_VOLUNTEER_CHAT_IDS", "").strip():
+        print(
+            "note: TELEGRAM_VOLUNTEER_CHAT_IDS is empty, so volunteer tasks cannot be delivered "
+            "and will be recorded instead. Set it to your own chat id to play both parts."
+        )
+    notifier = TelegramNotifier(Bot(token))
+    return notifier, notifier.poll_once
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     ap.add_argument("--auto-approve", action="store_true")
+    ap.add_argument("--telegram", action="store_true", help="use the real Telegram bot")
     ap.add_argument("--profile", help="hazard profile id (default: DOORSTEP_PROFILE or heat)")
     ap.add_argument("--alert", type=Path)
     ap.add_argument("--concurrency", type=int)
     ap.add_argument("--compression", type=float)
+    ap.add_argument("--decision-ttl", type=float, help="real minutes before a decision expires")
     ap.add_argument("--timeout", type=float, default=240.0)
     ap.add_argument("--no-board", action="store_true")
     ap.add_argument("--no-clear", action="store_true")
     ap.add_argument("--report", type=Path)
     ap.add_argument("--transcripts", action="store_true")
     args = ap.parse_args()
+
+    notifier = taps = None
+    if args.telegram:
+        notifier, taps = build_telegram()
+        if args.auto_approve:
+            print(
+                "--telegram with --auto-approve: the simulated captain answers first; "
+                "drop --auto-approve to decide on your phone."
+            )
 
     runner = DrillRunner(
         profile_id=args.profile,
@@ -53,6 +97,9 @@ def main() -> int:
         timeout_seconds=args.timeout,
         show_board=not args.no_board,
         clear_screen=not args.no_clear,
+        notifier=notifier,
+        notifier_taps=taps,
+        decision_ttl_minutes=args.decision_ttl,
     )
     report = asyncio.run(runner.run())
     ctx = runner.ctx
@@ -81,12 +128,16 @@ def main() -> int:
     for m in ctx.outbox:
         print(f"  [{m.kind}] to {m.recipient}: {m.text[:140]}")
     print()
-    print("DECISIONS:")
-    for d in ctx.store.decisions(ctx.incident_id):
-        print(
-            f"  {d.id} [{d.name}] {d.resident_id or ''}: {d.status} {d.response or ''} | "
-            f"{d.reason[:90]}"
-        )
+    print("WHO DECIDED WHAT, AND WHEN:")
+    for line in board.decision_timeline(ctx):
+        print(f"  {line}")
+    if not ctx.store.decisions(ctx.incident_id):
+        print("  no human decisions were needed")
+    if runner.taps:
+        print()
+        print("TAPS RECEIVED:")
+        for line in runner.taps:
+            print(f"  {line}")
     print()
     print("POLICY DENIALS (attempts refused by Cedar or by a code check; the policy held):")
     for e in ctx.audit.denials():

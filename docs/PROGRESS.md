@@ -1,11 +1,11 @@
 # Doorstep — progress log
 
-Current phase: **1 — Domain core + text-mode agents (local)**: built, Gate 1 passed, waiting for
-Ansh to commit on `phase1` and say "go" for Phase 2.
-Next gate: **Gate 2**
+Current phase: **2 — Human-in-the-loop (interrupts, persistence, Telegram)**: ✅ **complete, Gate 2
+passed** (both halves). Ready for Ansh to commit on `phase2` and say "go" for Phase 3.
+Next gate: **Gate 3**
 Time now vs plan: Phase 0 ran Fri Sep 11 00:00–12:35 PDT (planned Thu evening). Phase 1 ran Fri
-17:45–21:20 PDT, about 3.5 h of its 5 h box, inside the planned Fri 6 PM–12 AM slot. Phase 2 (Sat
-9 AM) is on schedule.
+17:45–21:20 PDT, about 3.5 h of its 5 h box. Phase 2 started Sat 08:30 PDT; about 2.5 h of its
+4 h box used at the hand-off point, so Phase 3 (Sat 1 PM) is on schedule.
 
 ## Setup completed before Phase 0
 
@@ -19,7 +19,7 @@ Time now vs plan: Phase 0 ran Fri Sep 11 00:00–12:35 PDT (planned Thu evening)
 |---|---|---|---|---|
 | 0 | 5 smoke tests, private repo + LICENSE + kit committed, gitleaks | ✅ passed | All five smoke scripts exit 0 with results in the table below (05 Telegram, 04 Twilio, 01 Nova 2 Lite, 02 Nova 2 Sonic, 03 AgentCore Runtime). Private repo with MIT LICENSE, `.gitignore` and kit committed on `main`; Phase 0 work on branch `phase0`. gitleaks: the pre-commit hook blocked a commit containing a fake `AKIA…` key (rule `aws-access-token`, commit aborted, HEAD unchanged). | 2026-09-11 |
 | 1 | Unit tests + local 12-resident drill | ✅ passed | `make check` green: ruff clean, 158 unit tests. They cover the drill setup, the deterministic graph gates (activation, plan, outreach), the dummy-profile test (questions, weights, red flags, needs and relief kind change with no code change), a hazard-word guard over the whole agent package, every risk factor and wave rule, every state-machine transition plus retries, 12 backstop tests incl. a 300-case property test (never lowers, never drops flags, both disagreement kinds logged), 29 Cedar cases through the real `CedarAuthorization` handler (non-allowlisted call, sandbox real-channel call, broadcast with resident details, agent recording an emergency call, plus quiet hours/Extreme, attempts cap, consent, distance, availability, unknown tool, schema typos), audit hook, tool code checks, personas, violations. `make local-drill ARGS=--auto-approve`: 12/12 cases RESOLVED with the expected classification for every persona, both urgent personas escalated (r01 explicit via `flag_urgent`, r02 hidden via the backstop), Harold escalated after 3 unanswered attempts, 5 decisions, 13 messages recorded, 139 audit events, 0 policy violations (1 attempt denied by Cedar and audited with the deciding facts), 53.6 s wall-clock on the final tree (49.7 s the run before). Report in `evals/drill_report.json`. | 2026-09-11 |
-| 2 | Interrupt resume test + Telegram approval loop | ☐ | | |
+| 2 | Interrupt resume test + Telegram approval loop | ✅ passed | **Automated (the real gate):** `tests/test_restart_resume.py` raises an interrupt in one subprocess which then exits, rebuilds from the persisted session in a second interpreter that has only the session directory and the decision record, answers it, and asserts the volunteer task was sent **exactly once** (by process B) and that a second tap returns `already_answered` without re-running anything. `make check` green: ruff clean, **206 tests** (was 165), all offline via a `ScriptedModel` double so they run in CI. Identity: a non-roster chat, a volunteer answering a captain decision, and a volunteer answering another volunteer's task are all refused and audited. Idempotency: double tap, tap-after-expiry, changed choice on a second tap, and a redelivered Telegram `update_id` all leave exactly one effect. Minimal disclosure swept over all 12 drill residents. `make local-drill ARGS=--auto-approve` PASS on the new machinery: 12/12 RESOLVED, both urgent personas escalated, 0 violations, 100.3 s. **Manual (Ansh's phone, `make telegram-drill`):** 12 taps over 8 decisions in 154 s — one decision tapped five times (four `already_answered`), one expired then tapped (`expired`), every tap attributed to `captain:cap-maria` through a chat shared with `vol-tom`, 0 violations, 12/12 settled. The run surfaced two real bugs (lost "Send Sam" decisions; a `9999 km` label) and a TTL design error; all three fixed and covered by tests before the gate was marked. | 2026-09-12 |
 | 3 | Cloud drill via AgentCore + Telegram webhook + traces | ☐ | | |
 | 4a | 3 browser check-ins | ☐ | | |
 | 4b | 2 real calls + mid-call escalation | ☐ | | |
@@ -38,6 +38,94 @@ Time now vs plan: Phase 0 ran Fri Sep 11 00:00–12:35 PDT (planned Thu evening)
 | 5 | Telegram ping + button | ✅ PASS 2026-09-11 | Bot `@doorstep_agent_bot`; captain chat ID from the `--whoami` step. Message with 3 inline buttons sent; the `I'm handling it` callback arrived 7.5 s later via long polling, was answered, and the message was edited. First run timed out at 120 s with no tap; second run passed. |
 
 ## Log (newest first)
+
+### 2026-09-12 about 11:00 PDT — Phase 2 built; automated half of Gate 2 passes
+- Spikes first, because the whole design turns on one distinction (both scripts kept in
+  `scripts/spikes/`, both PASS):
+  - **Spike A** — `tool_context.interrupt` vs `BeforeToolCallEvent.interrupt`. Proven in the
+    installed SDK: a tool interrupt re-runs the tool body **from the top** on resume (the
+    pre-interrupt lines execute twice), while a hook interrupt returns from the executor
+    **before the tool runs at all** and runs it exactly once on approval, or never on
+    `cancel_tool`. Interrupt id is `v1:{tool_call|before_tool_call}:{toolUseId}:{uuid5(name)}`,
+    so it is stable across processes.
+  - **Spike B** — `SnapshotSessionManager` + `LocalFileStorage` round-trips interrupt state,
+    including `pending_tool_execution`, across a real process boundary.
+- Design following from that: `escalate_to_captain` raises a **tool** interrupt (its only
+  pre-interrupt work is one idempotent upsert, and paging the captain *is* the escalation);
+  `assign_volunteer` is interrupted by **`ApprovalHook`** at admission, because its side effect is
+  a resident's details leaving the building and must not happen and then be regretted.
+- Built: `decisions.py` (the single `respond_to_decision` path both Telegram and the Phase 5 web
+  app use — identity, idempotency, expiry, resume), `approvals.py`, `sessions.py`, `messages.py`
+  (every human-facing string in one place), `notify/` (Notifier protocol, RecordingNotifier,
+  TelegramNotifier). `Decision` gained `draft|pending|answered|expired`, `audience`, `tool_use_id`,
+  `interrupt_id`, `session_id`, `expires_at`, `delivery[]`.
+- Verified how: `make check` green (ruff clean, **205 tests**, up from 165). New suites:
+  `test_restart_resume.py` (**the Gate 2 test**: two real subprocesses, the tool runs exactly once
+  and the second tap is recognised), `test_interrupt_resume.py` (7), `test_decisions.py` (14),
+  `test_messages.py` (7), `test_telegram.py` (11). All offline via a `ScriptedModel` double
+  (the SDK ships no mock provider), so they run in CI.
+  `make local-drill ARGS=--auto-approve` PASS on the new machinery: 12/12 RESOLVED, both urgent
+  personas escalated, 0 violations, 96.4 s, 8 decisions including the full
+  approve-door-knock → volunteer-task chain.
+- Found and fixed while running the live drill: after the captain chose "I'm handling it", the
+  dispatcher closed one case and **silently forgot two others** (r01, r02 left ESCALATED with no
+  outcome), because carrying out the choice was left to the model. The deterministic half of a
+  decision now runs in code after the resume (`_apply_directly`, idempotent), so the model gets
+  its turn and the captain's choice happens either way. Re-ran: all 12 RESOLVED.
+  `tests/test_interrupt_resume.py::test_i_am_handling_it_closes_the_case_even_if_the_model_forgets`
+  pins it with a model that never calls `close_case`.
+- Minimal-disclosure fix: `_volunteer_brief` was interpolating `result.key_quote`, so the most
+  sensitive sentence of a call would have been texted to a volunteer. Removed. The rule is now
+  written down and swept over the whole roster by `test_messages.py`: **standing facts vs today's
+  call** — consented roster notes travel (they change how a volunteer knocks), the resident's own
+  words do not.
+- Also: the dispatcher prompt now forbids guessing a resident's pronouns from their name (the
+  roster records none); drills never send Telegram unless `--telegram` is passed.
+- Not done: the manual Telegram loop (needs Ansh's phone) and `docs/SPEC.md` amendments for the
+  seven issues listed below.
+
+### 2026-09-12 about 18:00 PDT — Gate 2 manual half passed; the run found two real bugs
+- Ansh ran `make telegram-drill` and answered on his phone. **12 taps, 8 decisions, 0 violations,
+  12/12 settled, 154 s.** He tapped one decision **five times** (four `already_answered`), let one
+  expire and then tapped it (`expired`), and every tap resolved to `captain:cap-maria` through a
+  chat shared with `vol-tom`. Stronger evidence than the scripted plan asked for.
+- **Bug 1 (serious): the captain chose "Send Sam" for both urgent residents and nobody was sent.**
+  `_apply_directly` only carried out `resolve`, `escalate` and `acknowledge`; `assign_volunteer`
+  fell through to the model, which dropped it — the same class of failure fixed that morning for
+  "I'm handling it", in the branch that had not been covered. The real work is now
+  `tools.send_volunteer_task`, called by the tool *and* by `decisions._apply_directly`, and
+  idempotent so it is safe after a model that already assigned. Two tests cover it.
+  Verified: a re-run sends `vol-priya` and `vol-tom` their tasks and both cases reach RESOLVED.
+- **Bug 2: "Send Sam (9999 km)" on the captain's phone.** `ApprovalHook` read
+  `volunteer_distance_km` out of `_cedar_session`, which belongs to whichever tool call wrote it
+  last — a preceding `find_nearest_volunteers` (no `volunteer_id`) leaves the enricher's 9999
+  sentinel there. The hook now measures the distance itself.
+- **Decision TTL was being compressed, and should not be.** Compression exists to speed up the
+  agent's own timers (retries, re-checks). A human's thinking time is not one of them: a
+  15-minute deadline became 30 seconds, and the drill expired a decision 7 seconds before Ansh's
+  thumb landed while 8 arrived at once. `expires_at` is now real time, never compressed, with
+  `--decision-ttl` (real minutes) to demonstrate expiry deliberately.
+- Verified how: `make check` green (**209 tests**); `make local-drill ARGS=--auto-approve` PASS,
+  12/12 RESOLVED, 0 violations, 100.3 s, with volunteer tasks actually delivered.
+
+### 2026-09-12 about 11:30 PDT — budget alert investigated: $0.00 out of pocket, but two real findings
+- The `doorstep-monthly` $4.25 alert fired. Cause: the budget has no cost-type filters, so it
+  tracks **gross usage before credits**. Measured in Cost Explorer: usage $4.4749, credits
+  -$4.4749, **net $0.00**. Credits: $140 granted, $135.51 remaining, expiring Sep 2027. Nothing is
+  running continuously — only the `CDKToolkit` bootstrap stack; no AgentCore runtimes, no EC2, and
+  Sep 9-11 show $0.00.
+- Finding 1: **a drill costs about $0.37, not $0.03–0.05.** 12.3M Nova 2 Lite input tokens over
+  roughly a dozen drills. Nova 2 Lite input is $0.33/1M (5.5x Nova Lite 1.0) and is 90% of all
+  spend. `docs/COST.md` corrected with measured rates.
+- Finding 2: **no Nova 2 Sonic line item exists at all.** Eight Phase 0 voice sessions produced no
+  billable usage record. Phase 4 runs entirely on Sonic, so its cost is an unknown; measure it on
+  the first real call in Phase 4 before sizing any sandbox cap.
+- Consequence for Phase 5 (recorded now, acted on then): SPEC §14's 30 drills/day sandbox cap is
+  $11.10/day, about $266 over the 24-day judging period, which exceeds the remaining credits
+  around day 12 — on a live public link. A daily cap does not bound the total; a **cumulative**
+  cap (~300 drills) is needed alongside it.
+- Changed how we work: full 12-resident drills only at a gate. The 205 offline tests cover the
+  logic at $0, and two live drills were run today where one would have done.
 
 ### 2026-09-12 about 08:30 PDT — Gate 1 was flaky: a skipped protocol question hid an urgent case
 - Found: a verification drill FAILED the gate. Walter (r02, the hidden-urgent persona) came out OK. The
@@ -275,7 +363,38 @@ Time now vs plan: Phase 0 ran Fri Sep 11 00:00–12:35 PDT (planned Thu evening)
 | 2026-09-11 | Denials and violations are different counters: denials = attempts refused (Cedar or code check), violations = forbidden actions that executed, found by `violations.find_violations` | Gate 1 and the red-team eval say "every attempt must be denied"; a denial is the policy working | count every denial as a violation (fails the gate whenever the model tries something and is stopped) |
 | 2026-09-11 | Residents are simulated with the Strands Evals `ActorSimulator` on `us.amazon.nova-micro-v1:0`, a phone-call prompt template and a `message`/`stop` reply model | It is the SDK's user-simulation primitive and Micro answers in about 1.5 s | a hand-rolled persona Agent; Nova 2 Lite personas |
 | 2026-09-11 | Phase 1 treats ESCALATED as a settled state and `--auto-approve` plays the captain by taking the first option | Real decisions arrive with Strands interrupts in Phase 2; the drill must finish without a human | block the drill on a terminal prompt |
+| 2026-09-12 | `escalate_to_captain` uses a **tool** interrupt; `assign_volunteer` uses a **`BeforeToolCallEvent`** hook | Spike A: a tool interrupt re-runs the tool body on resume, a hook interrupt stops the tool running at all. Escalation's pre-interrupt work is one idempotent upsert and paging the captain *is* the escalation; an unapproved volunteer task must never leave the process | both as tool interrupts (would send then regret); both as hooks (escalation has nothing to guard) |
+| 2026-09-12 | Tools raise decisions as `draft`; the runner stamps the interrupt and flips them to `pending`, and only then does a channel deliver | Closes the race where a captain could tap a button before the decision knew its own interrupt id. Also keeps all I/O out of a tool body that re-executes | send from inside the tool (racy, and sends twice) |
+| 2026-09-12 | Decisions are keyed on `tool_use_id`, not a counter | A tool that interrupts re-runs from the top, so `upsert_decision` must find the record it already made rather than make a second one | a deterministic hash of incident+resident+name (wrong when one resident is escalated twice) |
+| 2026-09-12 | The deterministic half of a decision runs in code after the resume, not only in the model | A live drill showed the dispatcher closing one case after "I'm handling it" and silently forgetting two others. SPEC §5: the model proposes, deterministic code decides | trust the prompt (lost two captain decisions in one run) |
+| 2026-09-12 | Volunteer task replies are stored as decisions named `doorstep-volunteer-update` with no interrupt | SPEC §4 says volunteers get tasks, not decisions, but the mechanics — identity check, answered once, expiry — are identical, and one path cannot drift from the other | a separate reply path (a second place to get identity wrong) |
+| 2026-09-12 | A volunteer brief carries consented roster notes but never the resident's words from today's call | The line that survives scrutiny is standing facts vs today's call: a note changes how a volunteer knocks, a quote is the captain's evidence | drop all health-adjacent detail (deletes "hard of hearing", which a volunteer needs) |
+| 2026-09-12 | Drills send Telegram only with `--telegram`; `SnapshotSessionManager` + `LocalFileStorage` for sessions (S3 is a storage swap in Phase 3) | CLAUDE.md bans messages in sandbox but is silent on drill; a casual `make local-drill` or CI run must not text anyone. Strands docs recommend SnapshotSessionManager for new single-agent sessions | opt-out flag (wrong default); `FileSessionManager` (legacy per the docs) |
 | 2026-09-11 | The active profile and the replay fixture are configuration (`DOORSTEP_PROFILE`, `DOORSTEP_ALERT_FIXTURE` in `config.py`); a test forbids hazard words anywhere else in the agent package | Makes "nothing hazard-specific is hard-coded" checkable | a default in the drill runner (caught by the guard) |
+
+## Second-number swap (do before the video and submission)
+
+Phase 2 ran with **one** Telegram account playing both the captain and `vol-tom`:
+`TELEGRAM_VOLUNTEER_CHAT_IDS` is set to the captain's own chat id, so both messages land in the
+same chat. The code handles this deliberately — when a chat id is ambiguous, the responder
+resolves to the member the decision was **addressed to**, pinned by
+`tests/test_decisions.py::test_one_phone_playing_two_roles_resolves_to_the_addressee`.
+
+It is still worth swapping in a real second account before submitting, for two reasons: the
+demo shows the captain's phone and the volunteer's phone as genuinely different people, and the
+role check stops being something only the unit tests can show.
+
+To swap, edit one line in `.env` (index 0 is `vol-tom`, index 1 `vol-priya`, and so on in the
+order of `data/volunteers.json`):
+
+    TELEGRAM_VOLUNTEER_CHAT_IDS=<second account's chat id>,<third>,...
+
+Get the second account's chat id by opening `t.me/doorstep_agent_bot` on that phone, tapping
+Start, sending any message, then running `make smoke-05 ARGS=--whoami`. No code changes are
+needed; nothing else reads these ids. Re-run `make telegram-drill` to confirm the captain's
+message and the volunteer's task land on different phones, and that the volunteer's phone cannot
+answer a captain decision (it should reply "You're not on the Juniper Court list for this
+decision").
 
 ## Disclosures (goes into the README)
 
@@ -297,7 +416,11 @@ Time now vs plan: Phase 0 ran Fri Sep 11 00:00–12:35 PDT (planned Thu evening)
 
 - [x] Phase 0: Telegram bot + chat ID in `.env`; Twilio subaccount + number + `.env`; say when Bedrock verification clears; approve the AgentCore deploy
 - [ ] After Phase 0: rotate the Telegram bot token in BotFather (it was pasted into a tracked file once) and update `.env` only
-- [ ] Phase 1: review and commit the working tree on `phase1` (one commit), then say "go" for Phase 2
+- [x] Phase 1: review and commit the working tree on `phase1` (one commit), then say "go" for Phase 2
+- [x] Phase 2: set `TELEGRAM_VOLUNTEER_CHAT_IDS` in `.env` to the captain chat id, so one phone
+      plays both parts (done 2026-09-12)
+- [ ] **Before submitting: swap in a real second Telegram account.** See "Second-number swap"
+      below — it is one `.env` line, and it makes the role check visibly real in the demo.
 - [ ] Blog post 1 (Sat AM) · [ ] Blog post 2 (Sun PM) · [ ] Blog post 3 (Mon AM)
 - [ ] Volunteer Telegram account ready
 - [ ] Devpost draft created Saturday

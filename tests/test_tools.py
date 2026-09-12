@@ -110,40 +110,21 @@ def test_record_emergency_call_is_humans_only_in_code_too(ctx: RunContext) -> No
     )
 
 
-def test_escalate_creates_a_decision_with_canonical_options_and_escalates_the_case(
-    ctx: RunContext,
-) -> None:
-    _with_result(
-        ctx, "r01", CheckinStatus.URGENT, red_flags=["dizziness_fainting"], key_quote="I feel dizzy"
-    )
-    out = escalate_to_captain(
-        resident_id="r01",
-        reason="Said she is dizzy; told her to call 911.",
-        options=["Call her GP"],
-        tool_context=tc(ctx),
-    )
-    assert "captain paged" in out and "doorstep-urgent-red-flag" in out
-    case = ctx.store.case(ctx.incident_id, "r01")
-    assert case.state == CaseState.ESCALATED
-    decision = ctx.store.decisions(ctx.incident_id, status="pending")[0]
-    labels = [o.label for o in decision.options]
-    assert labels[0] == "I'm handling it"
-    assert any(label.startswith("Send ") for label in labels)
-    assert "Call the family contact" in labels  # r01 consented
-    assert "Call her GP" in labels
-    alert = ctx.outbox[-1]
-    assert alert.kind == "captain_alert" and "Told them to call 911" in alert.text
-    assert "I feel dizzy" in alert.text
-
-
 def test_escalate_needs_a_result_first(ctx: RunContext) -> None:
+    """The guard clauses run before the interrupt, so a direct call still reaches them."""
     out = escalate_to_captain(resident_id="r06", reason="x", options=[], tool_context=tc(ctx))
     assert out.startswith("error:")
 
 
-def test_assign_volunteer_high_risk_pauses_for_the_captain_then_auto_approves(ctx_factory) -> None:
-    ctx = ctx_factory(auto_approve=False)
+def test_assign_volunteer_body_never_runs_unapproved_for_high_risk(ctx: RunContext) -> None:
+    """The tool itself no longer asks: approval happens at admission, in `ApprovalHook`.
+
+    Called directly — the way only a test can — the body just runs, which is exactly why the
+    guard cannot live here. What stops an unapproved high-risk task leaving the building is the
+    hook pausing before this function is ever entered (test_interrupt_resume.py).
+    """
     _with_result(ctx, "r04", CheckinStatus.NEEDS_HELP, needs=["ride"])  # r04 scores 10 -> wave 1
+    assert ctx.store.case(ctx.incident_id, "r04").risk.wave == 1
     out = assign_volunteer(
         resident_id="r04",
         volunteer_id="vol-tom",
@@ -151,30 +132,8 @@ def test_assign_volunteer_high_risk_pauses_for_the_captain_then_auto_approves(ct
         reason="Needs a ride.",
         tool_context=tc(ctx),
     )
-    assert "captain approval requested" in out
-    case = ctx.store.case(ctx.incident_id, "r04")
-    assert case.state == CaseState.ESCALATED and case.assigned_volunteer is None
-    assert (
-        ctx.store.decisions(ctx.incident_id, status="pending")[0].name
-        == "doorstep-approve-door-knock"
-    )
-    assert not [m for m in ctx.outbox if m.kind == "volunteer_task"]
-
-    ctx2 = ctx_factory(auto_approve=True)
-    _with_result(ctx2, "r04", CheckinStatus.NEEDS_HELP, needs=["ride"])
-    out2 = assign_volunteer(
-        resident_id="r04",
-        volunteer_id="vol-tom",
-        include_brief=True,
-        reason="Needs a ride.",
-        tool_context=tc(ctx2),
-    )
-    assert out2.startswith("task sent to Tom")
-    case2 = ctx2.store.case(ctx2.incident_id, "r04")
-    assert case2.state == CaseState.ASSIGNED and case2.assigned_volunteer == "vol-tom"
-    task = [m for m in ctx2.outbox if m.kind == "volunteer_task"][-1]
-    assert task.recipient == "vol-tom" and "Juniper Court, Unit 1B" in task.text
-    assert ctx2.store.decisions(ctx2.incident_id, status="answered")
+    assert out.startswith("task sent to Tom")
+    assert ctx.store.case(ctx.incident_id, "r04").state == CaseState.ASSIGNED
 
 
 def test_assign_volunteer_low_risk_goes_straight_through_with_minimal_brief(
@@ -191,7 +150,11 @@ def test_assign_volunteer_low_risk_goes_straight_through_with_minimal_brief(
     assert out.startswith("task sent to Priya")
     task = ctx.outbox[-1]
     assert "Anita" in task.text and "Out of water" in task.text
-    assert ctx.store.decisions(ctx.incident_id) == []
+    # No captain decision; the one record is Priya's own reply, with her three buttons.
+    made = ctx.store.decisions(ctx.incident_id)
+    assert len(made) == 1
+    assert made[0].name == "doorstep-volunteer-update" and made[0].audience == "vol-priya"
+    assert [o.label for o in made[0].options] == ["On my way", "They're OK", "Need more help"]
 
 
 def test_assign_volunteer_refuses_unavailable_or_far_in_code(ctx: RunContext) -> None:

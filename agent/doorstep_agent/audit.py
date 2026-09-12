@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from typing import Any, Literal
 
-from strands.hooks import AfterToolCallEvent, HookProvider, HookRegistry
+from strands.hooks import AfterToolCallEvent, BeforeToolCallEvent, HookProvider, HookRegistry
 
 from .models import AuditEvent, AuditType
 from .store import Repository
@@ -116,9 +116,35 @@ class AuditHook(HookProvider):
 
     def __init__(self, actor: str) -> None:
         self.actor = actor
+        self._attempted: set[str] = set()
 
     def register_hooks(self, registry: HookRegistry) -> None:
+        registry.add_callback(BeforeToolCallEvent, self.before_tool_call)
         registry.add_callback(AfterToolCallEvent, self.after_tool_call)
+
+    def before_tool_call(self, event: BeforeToolCallEvent) -> None:
+        """Record the attempt, because an interrupted tool never reaches AfterToolCallEvent.
+
+        Strands skips `AfterToolCallEvent` for a tool whose `BeforeToolCallEvent` raised an
+        interrupt, so without this a pause would leave no trace: the audit log would show a
+        captain being asked about a tool call it never mentioned. One line per tool use, since
+        the event fires again on resume.
+        """
+        ctx = event.invocation_state.get("ctx")
+        tool_use_id = str(event.tool_use.get("toolUseId") or "")
+        if ctx is None or tool_use_id in self._attempted:
+            return
+        self._attempted.add(tool_use_id)
+        tool_input = dict(event.tool_use.get("input") or {})
+        ctx.audit.record(
+            actor=self.actor,
+            type="tool_call",
+            resident_id=tool_input.get("resident_id") or event.invocation_state.get("resident_id"),
+            tool=event.tool_use["name"],
+            input_summary=summarise_input(tool_input),
+            reason="attempted",
+            data={"status": "attempted", "tool_use_id": tool_use_id},
+        )
 
     def after_tool_call(self, event: AfterToolCallEvent) -> None:
         state = event.invocation_state

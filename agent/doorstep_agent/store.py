@@ -42,6 +42,7 @@ class Repository(Protocol):
     def save_decision(self, decision: Decision) -> None: ...
     def decision(self, decision_id: str) -> Decision: ...
     def decisions(self, incident_id: str, status: str | None = None) -> list[Decision]: ...
+    def decision_for_tool_use(self, incident_id: str, tool_use_id: str) -> Decision | None: ...
     def append_event(self, event: AuditEvent) -> None: ...
     def events(self, incident_id: str, since_seq: int = 0) -> list[AuditEvent]: ...
     def next_seq(self, incident_id: str) -> int: ...
@@ -157,6 +158,23 @@ class InMemoryStore:
             for d in self._decisions.values()
             if d.incident_id == incident_id and (status is None or d.status == status)
         ]
+
+    def decision_for_tool_use(self, incident_id: str, tool_use_id: str) -> Decision | None:
+        """The decision raised by one tool use, if any.
+
+        A tool that raises an interrupt re-runs from the top on resume, so it must find the
+        record it already created instead of creating a second one.
+        """
+        if not tool_use_id:
+            return None
+        return next(
+            (
+                d
+                for d in self._decisions.values()
+                if d.incident_id == incident_id and d.tool_use_id == tool_use_id
+            ),
+            None,
+        )
 
     def append_event(self, event: AuditEvent) -> None:
         self._events.setdefault(event.incident_id, []).append(event)
