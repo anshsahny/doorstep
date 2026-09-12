@@ -1,11 +1,11 @@
 # Doorstep — progress log
 
-Current phase: **2 — Human-in-the-loop (interrupts, persistence, Telegram)**: ✅ **complete, Gate 2
-passed** (both halves). Ready for Ansh to commit on `phase2` and say "go" for Phase 3.
-Next gate: **Gate 3**
+Current phase: **3 — Cloud (AgentCore + AWS backend)**: ✅ **complete, Gate 3 passed.** Ready for
+Ansh to commit on `phase3` and say "go" for Phase 4 (voice).
+Next gate: **Gate 4a**
 Time now vs plan: Phase 0 ran Fri Sep 11 00:00–12:35 PDT (planned Thu evening). Phase 1 ran Fri
-17:45–21:20 PDT, about 3.5 h of its 5 h box. Phase 2 started Sat 08:30 PDT; about 2.5 h of its
-4 h box used at the hand-off point, so Phase 3 (Sat 1 PM) is on schedule.
+17:45–21:20 PDT, about 3.5 h of its 5 h box. Phase 2 started Sat 08:30 PDT and was committed
+before 11:27 PDT, when Phase 3 planning started: about 1.5 h ahead of the Sat 1 PM slot.
 
 ## Setup completed before Phase 0
 
@@ -20,7 +20,7 @@ Time now vs plan: Phase 0 ran Fri Sep 11 00:00–12:35 PDT (planned Thu evening)
 | 0 | 5 smoke tests, private repo + LICENSE + kit committed, gitleaks | ✅ passed | All five smoke scripts exit 0 with results in the table below (05 Telegram, 04 Twilio, 01 Nova 2 Lite, 02 Nova 2 Sonic, 03 AgentCore Runtime). Private repo with MIT LICENSE, `.gitignore` and kit committed on `main`; Phase 0 work on branch `phase0`. gitleaks: the pre-commit hook blocked a commit containing a fake `AKIA…` key (rule `aws-access-token`, commit aborted, HEAD unchanged). | 2026-09-11 |
 | 1 | Unit tests + local 12-resident drill | ✅ passed | `make check` green: ruff clean, 158 unit tests. They cover the drill setup, the deterministic graph gates (activation, plan, outreach), the dummy-profile test (questions, weights, red flags, needs and relief kind change with no code change), a hazard-word guard over the whole agent package, every risk factor and wave rule, every state-machine transition plus retries, 12 backstop tests incl. a 300-case property test (never lowers, never drops flags, both disagreement kinds logged), 29 Cedar cases through the real `CedarAuthorization` handler (non-allowlisted call, sandbox real-channel call, broadcast with resident details, agent recording an emergency call, plus quiet hours/Extreme, attempts cap, consent, distance, availability, unknown tool, schema typos), audit hook, tool code checks, personas, violations. `make local-drill ARGS=--auto-approve`: 12/12 cases RESOLVED with the expected classification for every persona, both urgent personas escalated (r01 explicit via `flag_urgent`, r02 hidden via the backstop), Harold escalated after 3 unanswered attempts, 5 decisions, 13 messages recorded, 139 audit events, 0 policy violations (1 attempt denied by Cedar and audited with the deciding facts), 53.6 s wall-clock on the final tree (49.7 s the run before). Report in `evals/drill_report.json`. | 2026-09-11 |
 | 2 | Interrupt resume test + Telegram approval loop | ✅ passed | **Automated (the real gate):** `tests/test_restart_resume.py` raises an interrupt in one subprocess which then exits, rebuilds from the persisted session in a second interpreter that has only the session directory and the decision record, answers it, and asserts the volunteer task was sent **exactly once** (by process B) and that a second tap returns `already_answered` without re-running anything. `make check` green: ruff clean, **206 tests** (was 165), all offline via a `ScriptedModel` double so they run in CI. Identity: a non-roster chat, a volunteer answering a captain decision, and a volunteer answering another volunteer's task are all refused and audited. Idempotency: double tap, tap-after-expiry, changed choice on a second tap, and a redelivered Telegram `update_id` all leave exactly one effect. Minimal disclosure swept over all 12 drill residents. `make local-drill ARGS=--auto-approve` PASS on the new machinery: 12/12 RESOLVED, both urgent personas escalated, 0 violations, 100.3 s. **Manual (Ansh's phone, `make telegram-drill`):** 12 taps over 8 decisions in 154 s — one decision tapped five times (four `already_answered`), one expired then tapped (`expired`), every tap attributed to `captain:cap-maria` through a chat shared with `vol-tom`, 0 violations, 12/12 settled. The run surfaced two real bugs (lost "Send Sam" decisions; a `9999 km` label) and a TTL design error; all three fixed and covered by tests before the gate was marked. | 2026-09-12 |
-| 3 | Cloud drill via AgentCore + Telegram webhook + traces | ☐ | | |
+| 3 | Cloud drill via AgentCore + Telegram webhook + traces | ✅ passed | **Deploy:** `make deploy` created stack `Doorstep` from nothing (118 s) and ran again green from a clean clone + this phase's diff (`make setup && make deploy`; the runtime image hashed identically). **Resume in the cloud:** `make cloud-restart-test ARGS="--delay 120"` 18/18 — paused in process A, `StopRuntimeSession`, a real-webhook tap resumed in process B from S3, exactly one volunteer task, two replays dropped at the webhook, a second tap `already_answered`, wrong secret 401. **Cloud drill with Telegram:** `make cloud-drill ARGS=--telegram` PASS on `drill-20260912-234122-d132`: 12/12 settled, r01 and r02 escalated, 0 violations, 8 taps from Ansh's phone through the webhook (7 as `captain:cap-maria`, 1 as `volunteer:vol-tom`), 117 s. **Traces:** 2,059 spans in 14 traces for that incident (`make trace`). **No secrets:** `make scan-logs` 0 matches for 17 values over 20,500 events. **Offline:** 277 tests. **Cost:** $5.31 gross / $0.00 net to date (Phase 3 ≈ $1.2 gross). | 2026-09-12 |
 | 4a | 3 browser check-ins | ☐ | | |
 | 4b | 2 real calls + mid-call escalation | ☐ | | |
 | 5 | Judge flow < 4 min, Lighthouse a11y ≥ 90 | ☐ | | |
@@ -38,6 +38,113 @@ Time now vs plan: Phase 0 ran Fri Sep 11 00:00–12:35 PDT (planned Thu evening)
 | 5 | Telegram ping + button | ✅ PASS 2026-09-11 | Bot `@doorstep_agent_bot`; captain chat ID from the `--whoami` step. Message with 3 inline buttons sent; the `I'm handling it` callback arrived 7.5 s later via long polling, was answered, and the message was edited. First run timed out at 120 s with no tap; second run passed. |
 
 ## Log (newest first)
+
+### 2026-09-12 about 16:50 PDT — Gate 3 passed with real Telegram taps; the first run found two bugs
+- **First Telegram drill** (`drill-20260912-232958-a26a`): Ansh answered 6 captain decisions
+  through the webhook in 28 s, 0 violations — but it scored FAIL on "all settled", and correctly:
+  1. **A volunteer task that cannot be delivered left the case ASSIGNED forever.** The captain
+     chose "Send Sam"; `.env` maps only `vol-tom` to a chat, so the task was rightly not sent
+     (audited) — and Rose then waited on a reply that could never come. Fix:
+     `decisions.withdraw_undeliverable_task` expires the task and escalates the case back to the
+     captain with the reason recorded; `deliver_pending` calls it when a channel returns no
+     delivery. Test: `test_telegram.py::test_a_task_for_an_unreachable_volunteer_goes_back_to_the_captain`.
+  2. **"Call the family contact" had no deterministic branch** (SPEC §4a says every option action
+     must). Fix: `tools.send_family_notice`, shared by the tool and `_apply_directly`, keyed on the
+     decision so the family hears once whether the model, the branch or both act; consent is
+     re-checked because this path skips Cedar. Three tests, red-green verified by disabling the
+     branch (two fail without it).
+  That run was stopped by the operator and scored from DynamoDB; both fixes deployed (under 1 MB
+  of image layers uploaded).
+- **Second Telegram drill** (`drill-20260912-234122-d132`): **PASS.** Ansh followed a tap script
+  and each effect was checked in DynamoDB afterwards: Rose "Send Sam" → task withdrawn, case
+  ESCALATED, nothing sent; Walter, Luis, Gloria "I'm handling it" → RESOLVED; Dolores "Send Tom" →
+  Tom's task delivered, "They're OK" attributed to `volunteer:vol-tom`, RESOLVED; Harold "Call the
+  family contact" → exactly one family notice.
+- Also found and fixed this block: **no spans for anything started through a Lambda.** The
+  Lambdas forwarded an X-Ray header with `Sampled=0` and the runtime's sampler followed it; Lambda
+  active tracing is now on (template test added). After the fix the drill produced 2,059 spans.
+- Noted for Phase 6 (evals), not fixed: the dispatcher raised an "unmet need" decision for Gloria,
+  who said she was fine (an unnecessary interruption, not a safety issue); the outbox records a
+  volunteer task when it is written, before delivery, so a report counts the withdrawn Sam task as
+  a message (the audit log shows it was never sent).
+- Verified how: `make check` green, **277 tests**; `make scan-logs ARGS="--hours 2"` PASS (0 of 17
+  secret values in 20,508 events); Cost Explorer: Sep 12 usage $5.31, credits -$5.31, net $0.
+
+### 2026-09-12 about 16:10 PDT — Phase 3 built and deployed; cloud restart test and cloud drill pass
+- Scope per Ansh: Memory moved to Phase 6; SQS check-in queue, check-in worker and the two Twilio
+  Lambdas moved to Phase 4 (see the decisions register).
+- Spikes (scripts kept in `scripts/spikes/`): **S1 PASS** async entrypoint returns in 0.02 s while
+  `/ping` says `HealthyBusy`, a second invocation is served mid-task, session id arrives from the
+  header. **S8 PASS** moto: one of 16 conditional claims wins, 200 threaded `ADD` counters unique,
+  Strands `S3Storage` works through `AWS_ENDPOINT_URL_S3`; finding: prefix must be `sessions`
+  (not `sessions/`). **S3 PASS** `cdk synth` of `CfnRuntime`. **S4 PASS** (deployed) the runtime
+  works with the hand-written role: no `GetWorkloadAccessToken*`, no explicit KMS grant for
+  `aws/ssm`; cold invoke 1.1 s, warm 0.2 s. **S5** Lambda docs do not state the bundled boto3, so
+  boto3 1.43.92 is vendored into the Lambda zip (27 MB, includes `bedrock-agentcore`).
+- Built: `store_dynamo.py` (identity map + versioned writes), repository primitives (`allocate`,
+  `claim_decision`, `claim`, outbox rows), `applied_at` + `redrive_unapplied`, shared
+  `deliver_pending` with claim-before-send, incident-scoped Telegram callback data, `cloud/`
+  (coordinator, entrypoint, SSM hydration, log hardening), arm64 Dockerfile built from an
+  allowlisted context, three Lambdas (`telegram_webhook`, `admin_replay`, `alert_poller`), the CDK
+  stack, and `make secrets-push / deploy / seed / telegram-webhook / cloud-restart-test /
+  cloud-drill / scan-logs / trace / poller`.
+- Findings fixed on the way (each now has a test): (1) botocore at DEBUG logs whole SSM
+  `GetParameters` response bodies, i.e. every decrypted secret; botocore is pinned to WARNING.
+  (2) The replay caps counted a request that a later limit refused; limits are now checked
+  narrowest first. (3) `docker push` through Docker Desktop's proxy timed out three times on the
+  dependency layer; the Dockerfile's `chown -R` had also duplicated the venv into a second 420 MB
+  layer. The layer is gone, and `make deploy` now uploads the image through the ECR API in 10 MB
+  retried parts (`scripts/cloud/ecr_push.py`) so `cdk deploy` never runs `docker push`. (4) The
+  HTTP API stage's route throttling needs the routes to exist first (explicit dependency); the
+  first create rolled back and the empty stack was deleted before redeploying.
+- Verified how: `make check` green, **272 tests** (was 209), all offline. New suites:
+  `test_store_contract.py` (13 contract tests on both stores + 4 DynamoDB-only: second process,
+  stale write, 6-process claim race, replayed start), `test_restart_resume.py` now also runs both
+  halves on moto DynamoDB + S3, `test_coordinator.py` (pause in one coordinator, tap answered once
+  by another, retried tap no-op), `test_lambdas.py` (13: wrong secret, triple delivery, failed
+  forward releases the claim, caps, passcode lockout, idempotency key, kill switch, poller modes),
+  `test_cloud_hardening.py`, `test_infra_template.py` (9 least-privilege/no-secret checks).
+- Deployed: `make deploy` created stack `Doorstep` in 118 s and seeded 61 rows. Runtime
+  `doorstep_coordinator-f27wW9H3Nv`.
+- **`make cloud-restart-test ARGS="--delay 120"`: PASS 18/18** (incident
+  `cloudtest-20260912-230043-b722`). Nova 2 Lite escalated r01 and paused (process A, boot
+  `0418cd393970`); snapshot in S3; `StopRuntimeSession`; 120 s later a "Send Sam (0.2 km)" tap
+  through the real webhook resumed in process B (boot `b2db6fcffb28`); exactly one volunteer task;
+  the identical update twice more was dropped at the webhook (coordinator saw 2 taps, not 4); a
+  genuine second tap was `already_answered`; a wrong secret got 401.
+- **`make cloud-drill ARGS=--auto-approve`: PASS** (incident `drill-20260912-230318-8475`,
+  accepted in 3.7 s): 12/12 RESOLVED, r01 and r02 escalated (r02 via the backstop), 0 violations,
+  7 decisions all applied, 239 audit events, 88.6 s.
+- **`make scan-logs`: PASS**, 0 matches for 14 secret values over 4,483 log and span events.
+- **Traces:** `make trace ARGS=cloudtest-20260912-230043-b722` prints `POST /invocations ->
+  invoke_agent dispatcher -> execute_event_loop_cycle -> chat us.amazon.nova-2-lite-v1:0 ->
+  execute_tool escalate_to_captain` from the runtime log group's `spans` stream.
+
+### 2026-09-12 about 11:45 PDT — Phase 3 plan proposed (no code, nothing deployed)
+- Gate 2 confirmed passed; branch `phase3` clean at c48d3a4. Baseline `make check`: ruff clean,
+  209 passed in 2.2 s.
+- Verified before planning (agentcore docs MCP, installed package source, read-only AWS calls):
+  the Runtime HTTP contract (arm64, port 8080, `POST /invocations`, `GET /ping`), background work
+  via `add_async_task` + `HealthyBusy`, async entrypoints running on a dedicated worker loop
+  (`bedrock_agentcore/runtime/app.py`, SDK 1.22.0), `runtimeSessionId` 33–256 chars (responses
+  use `[a-zA-Z0-9][a-zA-Z0-9-_]*`, ≤ 100), idle timeout 60–28800 s (default 900), max lifetime
+  default 8 h, `StopRuntimeSession`; `AWS::BedrockAgentCore::Runtime` in CloudFormation and
+  `aws_cdk.aws_bedrockagentcore.CfnRuntime` in aws-cdk-lib 2.269.0; the execution-role template;
+  observability = Transaction Search (already `ACTIVE`) + ADOT `opentelemetry-instrument`;
+  `strands.storage.S3Storage` ships in strands-agents 1.55.1; `SnapshotSessionManager` saves at
+  the end of each invocation. Account state: only `CDKToolkit` (bootstrap v32); no SSM
+  parameters, runtimes, memories or tables.
+- Found while reading, to fix in Phase 3: (1) decision ids and audit seqs are minted as
+  `len(...)+1` while Strands runs sync tool bodies in threads (`asyncio.to_thread`,
+  `strands/tools/decorator.py:654`), a latent duplicate-id race that DynamoDB latency would widen;
+  (2) `drill.py:185-186` saves a case object loaded before `dispatch`, which is only safe because
+  `InMemoryStore` hands out shared objects; (3) `config.py` forces `AWS_PROFILE=doorstep`, which
+  breaks boto3 inside AWS; (4) Telegram callback data carries no incident id, so a webhook cannot
+  route a tap; (5) the bot token is in the Telegram URL path, so httpx INFO logs and OTEL httpx
+  spans would record it.
+- Correction: the log entry "about 18:00 PDT — Gate 2 manual half passed" below is 18:00 **UTC**
+  (11:00 PDT). Drill ids are UTC timestamps.
+- Next: Ansh reviews the Phase 3 plan and answers the open decisions, then says "go".
 
 ### 2026-09-12 about 11:00 PDT — Phase 2 built; automated half of Gate 2 passes
 - Spikes first, because the whole design turns on one distinction (both scripts kept in
@@ -370,6 +477,13 @@ Time now vs plan: Phase 0 ran Fri Sep 11 00:00–12:35 PDT (planned Thu evening)
 | 2026-09-12 | Volunteer task replies are stored as decisions named `doorstep-volunteer-update` with no interrupt | SPEC §4 says volunteers get tasks, not decisions, but the mechanics — identity check, answered once, expiry — are identical, and one path cannot drift from the other | a separate reply path (a second place to get identity wrong) |
 | 2026-09-12 | A volunteer brief carries consented roster notes but never the resident's words from today's call | The line that survives scrutiny is standing facts vs today's call: a note changes how a volunteer knocks, a quote is the captain's evidence | drop all health-adjacent detail (deletes "hard of hearing", which a volunteer needs) |
 | 2026-09-12 | Drills send Telegram only with `--telegram`; `SnapshotSessionManager` + `LocalFileStorage` for sessions (S3 is a storage swap in Phase 3) | CLAUDE.md bans messages in sandbox but is silent on drill; a casual `make local-drill` or CI run must not text anyone. Strands docs recommend SnapshotSessionManager for new single-agent sessions | opt-out flag (wrong default); `FileSessionManager` (legacy per the docs) |
+| 2026-09-12 | Phase 3 scope (Ansh, "yes to all"): AgentCore Memory moves to Phase 6; `checkin-jobs` SQS, `checkin_worker`, `twilio_voice`, `twilio_status` move to Phase 4; poller defaults to `observe`; table and bucket use `RemovalPolicy.DESTROY`; `moto` added as a dev dependency | Memory is the cut line and Sunday needs to be finishing, not building; the four resources have no caller until the phone path exists; a real NWS alert must not page a phone about fictional residents | build all of PLAN Phase 3 as written |
+| 2026-09-12 | One CDK (Python) stack deploys the runtime too (L1 `CfnRuntime`, arm64 `DockerImageAsset`), not the `@aws/agentcore` CLI | One `make deploy`, one IAM design with a hand-written least-privilege role; AWS docs call the CLI-created policies unsuitable for production | agentcore CLI's generated TypeScript CDK |
+| 2026-09-12 | Simulated check-ins run inside the coordinator (the unchanged `DrillRunner` as a background task reporting `HealthyBusy`); every other event is a short invocation on the incident's runtime session | Reuses the Gate 1/2 drill code as-is; one process per incident keeps the DynamoDB identity map single-writer | event-driven rewrite of the drill loop on SQS (a day, not an hour) |
+| 2026-09-12 | `DynamoStore` keeps a per-process identity map with versioned conditional writes; `Repository` gains `allocate`, `claim_decision`, `claim`, `append_message`/`messages` | `drill.py` saves a case loaded before dispatch (safe only with shared objects); decision ids were `len+1` while tool bodies run in threads; answered-once must be enforced by the database | fresh copies per read (silently loses dispatcher updates) |
+| 2026-09-12 | Telegram callback data is `d|<incident>|<decision>|<option>` | Decision ids are unique only per incident, and the webhook must route a tap to its incident's session before looking anything up; worst case 51 of 64 bytes | globally unique decision ids plus a lookup row |
+| 2026-09-12 | Webhook dedupe claims `update_id` before anything else and releases the claim only if forwarding fails; deliveries are claimed before `sendMessage` | A Telegram retry must be a no-op; a crash between claim and send leaves a decision unsent (board still shows it) rather than sent twice | claim after forwarding (a retry during a slow forward double-forwards) |
+| 2026-09-12 | Secrets live in SSM SecureStrings written by `make secrets-push`; processes read them into memory at start; CDK references names only; the runtime image is built from an allowlisted staging directory | Nothing sensitive in the template, outputs, env config or image; `.env` cannot reach `cdk.out` | Secrets Manager ($0.40/secret/month); `.dockerignore` (a denylist) |
 | 2026-09-11 | The active profile and the replay fixture are configuration (`DOORSTEP_PROFILE`, `DOORSTEP_ALERT_FIXTURE` in `config.py`); a test forbids hazard words anywhere else in the agent package | Makes "nothing hazard-specific is hard-coded" checkable | a default in the drill runner (caught by the guard) |
 
 ## Second-number swap (do before the video and submission)
@@ -419,6 +533,9 @@ decision").
 - [x] Phase 1: review and commit the working tree on `phase1` (one commit), then say "go" for Phase 2
 - [x] Phase 2: set `TELEGRAM_VOLUNTEER_CHAT_IDS` in `.env` to the captain chat id, so one phone
       plays both parts (done 2026-09-12)
+- [x] Phase 3: NWS user agent in `.env` and SSM (personal email for now); Telegram gate drill (2026-09-12)
+- [ ] Phase 3: review and commit the working tree on `phase3`, then say "go" for Phase 4
+- [ ] Note: the bot is in webhook mode now; run `make telegram-webhook ARGS=delete` before any local `make telegram-drill`, and `ARGS=set` afterwards
 - [ ] **Before submitting: swap in a real second Telegram account.** See "Second-number swap"
       below — it is one `.env` line, and it makes the role check visibly real in the demo.
 - [ ] Blog post 1 (Sat AM) · [ ] Blog post 2 (Sun PM) · [ ] Blog post 3 (Mon AM)

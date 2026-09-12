@@ -1,7 +1,11 @@
 """One half of the cross-process restart test, run as its own interpreter.
 
 Half A raises the interrupt and exits, taking the agent object with it. Half B knows only what
-is on disk — the session directory and the decision record — and answers from there. Neither
+is stored — the session and the decision record — and answers from there.
+
+With `RESTART_BACKEND=dynamo` both halves use the cloud stores (DynamoDB and S3, on a moto server
+the parent test runs), so B rebuilds everything from the table and the bucket rather than from a
+handoff file. Neither
 half can see the other's memory, which is the point: that is what a captain answering from their
 phone twenty minutes later actually looks like.
 
@@ -13,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -30,9 +35,26 @@ TOOL_USE_ID = "tu-restart"
 CAPTAIN_CHAT = "42424242"
 
 
-def build_ctx(work: Path) -> RunContext:
-    """The same incident in both processes, rebuilt from the same data and session directory."""
-    ctx = make_ctx(auto_approve=False, sessions_dir=work / "sessions")
+DYNAMO = os.getenv("RESTART_BACKEND") == "dynamo"
+
+
+def build_ctx(work: Path, *, first: bool = True) -> RunContext:
+    """The same incident in both processes, rebuilt from the same stores."""
+    store = None
+    if DYNAMO:
+        from doorstep_agent.config import settings
+        from doorstep_agent.store_dynamo import DynamoBackend
+
+        roster = json.loads((TESTS.parent / "data" / "roster.json").read_text())
+        store = DynamoBackend(settings().table_name, "juniper-court").for_incident(
+            "inc-test", roster["drill_subset"]
+        )
+    ctx = make_ctx(
+        auto_approve=False,
+        sessions_dir=work / "sessions",
+        store=store,
+        create_cases=first or not DYNAMO,
+    )
     ctx.model_override = run_script(
         ToolCall(
             "assign_volunteer",
@@ -46,9 +68,14 @@ def build_ctx(work: Path) -> RunContext:
         ),
         final_text="assigned",
     )
-    case = ctx.store.case(ctx.incident_id, RESIDENT)
-    ctx.policy.start_attempt(case, "simulated")
-    ctx.policy.apply_result(case, CheckinResult(status=CheckinStatus.NEEDS_HELP, needs=["ride"]))
+    if first or not DYNAMO:
+        # In memory, B has to rebuild the case; on DynamoDB the table already holds it.
+        case = ctx.store.case(ctx.incident_id, RESIDENT)
+        ctx.policy.start_attempt(case, "simulated")
+        ctx.policy.apply_result(
+            case, CheckinResult(status=CheckinStatus.NEEDS_HELP, needs=["ride"])
+        )
+        ctx.store.save_case(case)
     return ctx
 
 
@@ -97,9 +124,14 @@ async def half_b(work: Path) -> int:
     """A fresh process: no agent, no context, just the session on disk and the decision record."""
     from doorstep_agent.models import Decision
 
+    global _recorded
     handoff = json.loads((work / "handoff.json").read_text(encoding="utf-8"))
-    ctx = build_ctx(work)
-    ctx.store.save_decision(Decision.model_validate(handoff["decision"]))
+    ctx = build_ctx(work, first=False)
+    if DYNAMO:
+        _recorded = len(ctx.outbox)  # A's messages are already in the store's outbox
+        assert ctx.store.decision(handoff["decision_id"]).status == "pending"
+    else:
+        ctx.store.save_decision(Decision.model_validate(handoff["decision"]))
 
     outcome = await respond_to_decision(
         ctx,

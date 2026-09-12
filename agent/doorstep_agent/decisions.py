@@ -175,7 +175,9 @@ def upsert_decision(
     if existing is not None:
         return existing
 
-    number = len(ctx.store.decisions(ctx.incident_id)) + 1
+    # Allocated by the store, not counted: tool bodies run in threads, so two concurrent
+    # dispatches counting the same list would both mint the same id.
+    number = ctx.store.allocate(ctx.incident_id, "dec")
     decision = Decision(
         id=f"dec-{number:03d}",
         incident_id=ctx.incident_id,
@@ -234,23 +236,9 @@ async def respond_to_decision(
 
     # The idempotency gate. It sits before identity and before the agent on purpose: answering
     # twice must be cheap and safe even when the second tap is a stranger's.
-    if decision.status == "answered":
-        when = decision.responded_at.strftime("%H:%M") if decision.responded_at else "earlier"
-        chosen = decision.option(decision.response or "")
-        label = chosen.label if chosen else decision.response
-        return DecisionOutcome(
-            "already_answered",
-            f'Already answered at {when}: "{label}". Nothing was sent twice.',
-            decision,
-        )
-    if decision.status == "expired":
-        return DecisionOutcome(
-            "expired",
-            "This expired before anyone answered, so nothing was sent. The case is still open.",
-            decision,
-        )
-    if decision.status != "pending":
-        return DecisionOutcome("not_found", "That decision is not ready to answer yet.", decision)
+    closed = _closed_outcome(decision)
+    if closed is not None:
+        return closed
 
     if actor_override:
         actor = actor_override
@@ -277,12 +265,16 @@ async def respond_to_decision(
     if option is None:
         return DecisionOutcome("unknown_option", "That option is no longer on offer.", decision)
 
-    # Claim the decision before resuming, so a tap racing this one loses at the gate above.
-    decision.status = "answered"
-    decision.responder = actor
-    decision.response = option.id
-    decision.responded_at = ctx.clock.now()
-    ctx.store.save_decision(decision)
+    # Claim the decision before resuming. The store makes the claim atomic (a conditional write on
+    # DynamoDB), so of two taps racing here — in two threads or two processes — exactly one wins;
+    # the other is told what the winner chose.
+    claimed = ctx.store.claim_decision(
+        decision.id, responder=actor, response=option.id, responded_at=ctx.clock.now()
+    )
+    if claimed is None:
+        lost = _closed_outcome(ctx.store.decision(decision_id))
+        return lost or DecisionOutcome("not_found", "That decision is not ready to answer yet.")
+    decision = claimed
     ctx.audit.record(
         actor=actor,
         type="decision",
@@ -292,7 +284,61 @@ async def respond_to_decision(
     )
 
     detail = await _apply(ctx, decision, option, actor)
+    decision.applied_at = ctx.clock.now()
+    ctx.store.save_decision(decision)
     return DecisionOutcome("applied", f'You chose "{option.label}".', decision, detail=detail)
+
+
+def _closed_outcome(decision: Decision) -> DecisionOutcome | None:
+    """What to tell a human who taps a decision that can no longer be answered, or None."""
+    if decision.status == "answered":
+        when = decision.responded_at.strftime("%H:%M") if decision.responded_at else "earlier"
+        chosen = decision.option(decision.response or "")
+        label = chosen.label if chosen else decision.response
+        return DecisionOutcome(
+            "already_answered",
+            f'Already answered at {when}: "{label}". Nothing was sent twice.',
+            decision,
+        )
+    if decision.status == "expired":
+        return DecisionOutcome(
+            "expired",
+            "This expired before anyone answered, so nothing was sent. The case is still open.",
+            decision,
+        )
+    if decision.status != "pending":
+        return DecisionOutcome("not_found", "That decision is not ready to answer yet.", decision)
+    return None
+
+
+def redrive_unapplied(ctx: RunContext, *, older_than_seconds: float = 60.0) -> list[str]:
+    """Carry out answered decisions whose process stopped between the claim and the effect.
+
+    Only the deterministic half is re-run: it checks the case state first, so it is a no-op for
+    anything already done. Returns one line per decision it touched.
+    """
+    now = ctx.clock.now()
+    lines: list[str] = []
+    for decision in ctx.store.decisions(ctx.incident_id, status="answered"):
+        if decision.applied_at is not None or decision.responded_at is None:
+            continue
+        if (now - decision.responded_at).total_seconds() < older_than_seconds:
+            continue
+        option = decision.option(decision.response or "")
+        if option is None:
+            continue
+        settled = _apply_directly(ctx, decision, option, decision.responder or "system:redrive")
+        decision.applied_at = now
+        ctx.store.save_decision(decision)
+        ctx.audit.record(
+            actor="system:decisions",
+            type="decision",
+            resident_id=decision.resident_id,
+            reason=f"{decision.id} was answered but not carried out; re-applied: {settled}",
+            data={"decision_id": decision.id},
+        )
+        lines.append(f"{decision.id}: {settled}")
+    return lines
 
 
 async def _apply(ctx: RunContext, decision: Decision, option: DecisionOption, actor: str) -> str:
@@ -345,6 +391,8 @@ def _apply_directly(ctx: RunContext, decision: Decision, option: DecisionOption,
         return f"{resident_id} escalated to the captain"
     if option.action == "assign_volunteer":
         return _send_the_volunteer(ctx, decision, option, actor, case)
+    if option.action == "notify_family":
+        return _tell_the_family(ctx, decision, option, actor)
     if option.action == "acknowledge":
         ctx.audit.record(
             actor=actor,
@@ -393,6 +441,70 @@ def _send_the_volunteer(
         decision.reason,
         include_brief=True,
         tool_use_id=f"decision:{decision.id}",
+    )
+
+
+def _tell_the_family(
+    ctx: RunContext, decision: Decision, option: DecisionOption, actor: str
+) -> str:
+    """Tell the family the captain chose to tell, if the model has not already done it.
+
+    The branch the Gate 3 cloud drill found missing: the captain tapped "Call the family contact"
+    and only the model's goodwill stood between that tap and the family hearing anything. The
+    key is the decision, the same one the tool uses when it runs inside this resume.
+    """
+    from .tools import send_family_notice  # local: tools imports this module
+
+    try:
+        resident = ctx.store.resident(str(decision.resident_id))
+    except NotFound:
+        return "recorded"
+    reason = str(option.args.get("reason") or decision.reason)
+    return send_family_notice(
+        ctx, resident, reason, once_key=f"decision:{decision.id}", actor=actor
+    )
+
+
+def withdraw_undeliverable_task(ctx: RunContext, decision: Decision) -> None:
+    """A volunteer task that could not reach its volunteer goes back to the captain.
+
+    Found in the Gate 3 Telegram drill: the captain chose "Send Sam", Sam had no chat id, the
+    task was (rightly) not sent — and the case then sat ASSIGNED to someone who never heard about
+    it, waiting for a reply that could not come. The task is withdrawn and the case is escalated
+    again, so it is back in front of the captain with the reason on the record.
+    """
+    if decision.status != "pending":
+        return
+    decision.status = "expired"
+    ctx.store.save_decision(decision)
+    back_to_captain = False
+    if decision.resident_id:
+        try:
+            case = ctx.store.case(ctx.incident_id, decision.resident_id)
+        except NotFound:
+            case = None
+        if (
+            case is not None
+            and case.state == CaseState.ASSIGNED
+            and case.assigned_volunteer == decision.audience
+        ):
+            transition(
+                case,
+                CaseState.ESCALATED,
+                reason=f"{decision.audience} could not be reached; back to the captain",
+            )
+            case.assigned_volunteer = None
+            ctx.store.save_case(case)
+            back_to_captain = True
+    ctx.audit.record(
+        actor="system:decisions",
+        type="decision",
+        resident_id=decision.resident_id,
+        reason=(
+            f"{decision.id}: task could not be delivered to {decision.audience}; withdrawn"
+            + ("; the case is escalated to the captain again" if back_to_captain else "")
+        ),
+        data={"decision_id": decision.id, "audience": decision.audience},
     )
 
 

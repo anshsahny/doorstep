@@ -3,10 +3,11 @@
 A dispatcher run that interrupts must be resumable by a different process minutes later, so its
 conversation and interrupt state live in a Strands session keyed by incident and resident.
 
-Locally that session is a file tree; in Phase 3 only the `Storage` changes (`S3Storage`), not the
-session id, the manager, or anything that calls this module. The Strands docs recommend
-`SnapshotSessionManager` for new single-agent sessions, and Spike B confirmed it round-trips
-interrupt state — including the pending tool execution — across a real process boundary.
+Locally that session is a file tree; in the cloud only the `Storage` changes (`S3Storage`, chosen
+by `DOORSTEP_SESSIONS_BUCKET`), not the session id, the manager, or anything that calls this
+module. The Strands docs recommend `SnapshotSessionManager` for new single-agent sessions, and
+Spike B confirmed it round-trips interrupt state — including the pending tool execution — across
+a real process boundary.
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ from __future__ import annotations
 import re
 
 from strands.session import SnapshotSessionManager
-from strands.storage import LocalFileStorage, Storage
+from strands.storage import LocalFileStorage, S3Storage, Storage
 
 from .config import Settings
 
@@ -32,7 +33,13 @@ def session_id(incident_id: str, resident_id: str, agent_name: str = "dispatcher
 
 
 def build_storage(settings: Settings) -> Storage:
-    """Where sessions are kept. Phase 3 swaps this one line for `S3Storage`."""
+    """Where sessions are kept: S3 when a bucket is configured, the local directory otherwise.
+
+    The prefix is `sessions` with no trailing slash: `S3Storage` adds the separator itself, and
+    `"sessions/"` produces `sessions//…` keys (Spike S8).
+    """
+    if settings.sessions_bucket:
+        return S3Storage(settings.sessions_bucket, prefix="sessions")
     settings.sessions_dir.mkdir(parents=True, exist_ok=True)
     return LocalFileStorage(str(settings.sessions_dir))
 

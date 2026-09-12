@@ -197,9 +197,11 @@ Tasks (C):
 - `make deploy` works from a clean clone.
 - `scripts/replay_cloud.py` runs a 12-resident drill in the cloud end to end, including a Telegram approval via webhook.
 - Traces are visible.
-- `docs/COST.md` shows under $3 spent so far.
+- `docs/COST.md` shows under $3 spent so far. *(Amended 2026-09-12: gross usage was already $4.49 before Phase 3 — net $0 — so this reads "Phase 3 adds under $3 gross, net out-of-pocket $0, idle stack under $1/month".)*
 
 **Cut line:** if it's past 7 PM, Memory moves to Phase 6 (it's nice-to-have).
+
+*Taken 2026-09-12: Memory moved to Phase 6; `checkin-jobs`, `checkin_worker`, `twilio_voice` and `twilio_status` moved to Phase 4 (Ansh).*
 
 ---
 

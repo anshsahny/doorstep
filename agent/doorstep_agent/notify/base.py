@@ -10,7 +10,8 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from ..decisions import Responder
+from ..decisions import Responder, withdraw_undeliverable_task
+from ..messages import VOLUNTEER_UPDATE
 from ..models import Decision, Delivery
 from ..runtime import OutboundMessage, RunContext
 
@@ -53,6 +54,27 @@ class RecordingNotifier:
 
     def confirm(self, ctx: RunContext, decision: Decision, text: str) -> None:
         self.confirmations.append((decision.id, text))
+
+
+def deliver_pending(ctx: RunContext, notifier: Notifier) -> int:
+    """Hand every newly answerable decision to the channel, exactly once. Returns how many.
+
+    The store claim comes *before* the send. A process that dies between the two leaves a
+    decision unsent rather than sent twice — the captain can still act on the board — and a
+    loop tick, a retried event or a second process can never put the same buttons on a phone
+    twice.
+    """
+    sent = 0
+    for decision in ctx.store.decisions(ctx.incident_id, status="pending"):
+        if decision.delivered_to(decision.audience):
+            continue
+        if not ctx.store.claim(f"DELIVERY#{ctx.incident_id}#{decision.id}#{decision.audience}"):
+            continue
+        if notifier.deliver_decision(ctx, decision) is None and decision.name == VOLUNTEER_UPDATE:
+            withdraw_undeliverable_task(ctx, decision)
+            continue
+        sent += 1
+    return sent
 
 
 def responder_for(source: str, external_id: str) -> Responder:

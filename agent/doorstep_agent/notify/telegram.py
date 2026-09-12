@@ -18,7 +18,7 @@ from typing import Any
 
 import httpx
 
-from ..decisions import Responder, respond_to_decision
+from ..decisions import DecisionOutcome, Responder, respond_to_decision
 from ..messages import already_answered, answered, decision_body, expired, forbidden
 from ..models import Decision, Delivery
 from ..runtime import OutboundMessage, RunContext, resolve_ref
@@ -59,32 +59,58 @@ class Bot:
         self._http.close()
 
 
-def callback_data(decision_id: str, option_id: str) -> str:
-    """`d|<decision>|<option>`, kept inside Telegram's 64-byte cap.
+def callback_data(incident_id: str, decision_id: str, option_id: str) -> str:
+    """`d|<incident>|<decision>|<option>`, kept inside Telegram's 64-byte cap.
 
     The payload carries no resident id and no chat id: what it identifies is a decision, and who
     may answer that decision is decided from the roster, not from anything a client sends back.
+    The incident id is there because decision ids are only unique within an incident, and a
+    webhook has to know which incident's coordinator to wake before it can look anything up.
     """
-    data = f"d|{decision_id}|{option_id}"
+    data = f"d|{incident_id}|{decision_id}|{option_id}"
     if len(data.encode("utf-8")) > CALLBACK_LIMIT:
         raise ValueError(f"callback data too long for Telegram: {data!r}")
     return data
 
 
-def parse_callback(data: str) -> tuple[str, str] | None:
+def parse_callback(data: str) -> tuple[str, str, str] | None:
+    """`(incident_id, decision_id, option_id)`, or None for anything that is not ours."""
     parts = data.split("|")
-    if len(parts) != 3 or parts[0] != "d":
+    if len(parts) != 4 or parts[0] != "d" or not all(parts[1:]):
         return None
-    return parts[1], parts[2]
+    return parts[1], parts[2], parts[3]
 
 
 def keyboard(decision: Decision) -> dict[str, Any]:
     return {
         "inline_keyboard": [
-            [{"text": o.label, "callback_data": callback_data(decision.id, o.id)}]
+            [
+                {
+                    "text": o.label,
+                    "callback_data": callback_data(decision.incident_id, decision.id, o.id),
+                }
+            ]
             for o in decision.options
         ]
     }
+
+
+async def process_tap(ctx: RunContext, query: dict[str, Any]) -> DecisionOutcome | None:
+    """Turn one callback query into an answer, without touching Telegram.
+
+    Used by the notifier below and, in the cloud, by a coordinator whose incident has no real
+    channel (the restart test taps through the real webhook without messaging anyone).
+    """
+    parsed = parse_callback(str(query.get("data") or ""))
+    if parsed is None:
+        return None
+    incident_id, decision_id, option_id = parsed
+    if incident_id != ctx.incident_id:
+        return DecisionOutcome("not_found", "That decision is not on this incident.")
+    chat = str((query.get("message") or {}).get("chat", {}).get("id", ""))
+    return await respond_to_decision(
+        ctx, decision_id, option_id, Responder(source="telegram", external_id=chat)
+    )
 
 
 def chat_id_for(ctx: RunContext, member_id: str) -> str | None:
@@ -197,21 +223,18 @@ class TelegramNotifier:
             query = update.get("callback_query")
             if not query:
                 continue
-            line = await self._handle_tap(ctx, query)
+            line = await self.handle_tap(ctx, query)
             if line:
                 lines.append(line)
         return lines
 
-    async def _handle_tap(self, ctx: RunContext, query: dict[str, Any]) -> str | None:
-        parsed = parse_callback(str(query.get("data") or ""))
-        if parsed is None:
+    async def handle_tap(self, ctx: RunContext, query: dict[str, Any]) -> str | None:
+        """Answer one tap and show the human the result. Also the webhook's entry point."""
+        outcome = await process_tap(ctx, query)
+        if outcome is None:
             return None
-        decision_id, option_id = parsed
-        chat = str((query.get("message") or {}).get("chat", {}).get("id", ""))
-
-        outcome = await respond_to_decision(
-            ctx, decision_id, option_id, Responder(source="telegram", external_id=chat)
-        )
+        parsed = parse_callback(str(query.get("data") or ""))
+        decision_id, option_id = (parsed[1], parsed[2]) if parsed else ("?", "?")
 
         toast, decision = outcome.message, outcome.decision
         if outcome.kind == "forbidden":

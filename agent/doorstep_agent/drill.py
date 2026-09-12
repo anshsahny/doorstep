@@ -24,15 +24,23 @@ from .agents.dispatcher import dispatch
 from .agents.persona import NoAnswerChannel, Persona, PersonaChannel, load_personas
 from .audit import AuditLog
 from .config import Settings, settings
-from .decisions import Responder, expire_due_decisions, respond_to_decision
+from .decisions import Responder, expire_due_decisions, redrive_unapplied, respond_to_decision
 from .graph import start_incident
 from .models import Alert, CaseState, Incident, ResidentCase, utcnow
-from .notify.base import Notifier, RecordingNotifier
+from .notify.base import Notifier, RecordingNotifier, deliver_pending
 from .profiles import load_profile
-from .runtime import RunContext
+from .runtime import RunContext, StoreOutbox
 from .state_machine import CasePolicy, Clock, is_settled
-from .store import InMemoryStore, load_drill_subset
+from .store import InMemoryStore, Repository, load_drill_subset
 from .violations import find_violations
+
+# Builds the store for one incident from its id and resident subset. Local drills use the
+# default (in memory, from `data/`); the cloud coordinator passes a DynamoDB-backed one.
+StoreFactory = Callable[[str, list[str]], Repository]
+
+
+def new_incident_id() -> str:
+    return "drill-" + utcnow().strftime("%Y%m%d-%H%M%S")
 
 
 @dataclass
@@ -86,8 +94,16 @@ class DrillRunner:
         notifier: Notifier | None = None,
         notifier_taps: Callable[[RunContext], Awaitable[list[str]]] | None = None,
         decision_ttl_minutes: float | None = None,
+        store_factory: StoreFactory | None = None,
+        incident_id: str | None = None,
+        alert: Alert | None = None,
+        run_options: dict[str, Any] | None = None,
     ) -> None:
         self.cfg = cfg or settings()
+        self.store_factory = store_factory
+        self.incident_id = incident_id
+        self.alert = alert
+        self.run_options = dict(run_options or {})
         if decision_ttl_minutes is not None:
             # Real minutes, never compressed: see `decisions.expires_at`.
             self.cfg = replace(self.cfg, decision_ttl_minutes=decision_ttl_minutes)
@@ -119,10 +135,16 @@ class DrillRunner:
         )
         self.personas = {p.resident_id: p for p in personas}
         resident_ids = list(self.personas) or load_drill_subset(self.cfg.data_dir)
-        store = InMemoryStore.from_data_dir(self.cfg.data_dir, resident_ids=resident_ids)
+        incident_id = self.incident_id or new_incident_id()
+        store = (
+            self.store_factory(incident_id, resident_ids)
+            if self.store_factory
+            else InMemoryStore.from_data_dir(self.cfg.data_dir, resident_ids=resident_ids)
+        )
         clock = Clock(compression=self.compression)
-        incident_id = "drill-" + utcnow().strftime("%Y%m%d-%H%M%S")
-        alert = Alert.from_fixture(json.loads(self.alert_path.read_text(encoding="utf-8")))
+        alert = self.alert or Alert.from_fixture(
+            json.loads(self.alert_path.read_text(encoding="utf-8"))
+        )
         store.save_incident(
             Incident(
                 id=incident_id,
@@ -130,6 +152,13 @@ class DrillRunner:
                 mode="drill",
                 profile_id=self.profile.id,
                 alert=alert,
+                resident_ids=resident_ids,
+                run_options={
+                    "compression": self.compression,
+                    "auto_approve": self.auto_approve,
+                    "decision_ttl_minutes": self.cfg.decision_ttl_minutes,
+                    **self.run_options,
+                },
             )
         )
         ctx = RunContext(
@@ -148,6 +177,7 @@ class DrillRunner:
             settings=self.cfg,
             alert_severity=alert.severity,
             auto_approve=self.auto_approve,
+            outbox=StoreOutbox(store, incident_id),
         )
         self.ctx = ctx
         return ctx
@@ -198,7 +228,8 @@ class DrillRunner:
         ctx = self.ctx
         assert ctx is not None
         expire_due_decisions(ctx)
-        self._deliver_pending()
+        redrive_unapplied(ctx)
+        deliver_pending(ctx, self.notifier)
         if self.notifier_taps is not None:
             self.taps.extend(await self.notifier_taps(ctx))
         if not self.auto_approve:
@@ -211,15 +242,6 @@ class DrillRunner:
                 Responder(source="drill", external_id="auto-approve"),
                 actor_override="captain:auto-approve",
             )
-
-    def _deliver_pending(self) -> None:
-        """Hand every newly answerable decision to the channel, exactly once."""
-        ctx = self.ctx
-        assert ctx is not None
-        for decision in ctx.store.decisions(ctx.incident_id, status="pending"):
-            if decision.delivered_to(decision.audience):
-                continue
-            self.notifier.deliver_decision(ctx, decision)
 
     # --- main loop ---
 
@@ -294,75 +316,88 @@ class DrillRunner:
         return self._report(activated=True)
 
     def _report(self, *, activated: bool) -> DrillReport:
-        ctx = self.ctx
-        assert ctx is not None
-        cases = sorted(
-            ctx.store.cases(ctx.incident_id), key=lambda c: (c.risk.wave, -c.risk.points)
-        )
-        urgent_expected = sorted(
-            rid for rid, p in self.personas.items() if p.ground_truth.status == "URGENT"
-        )
-        urgent_escalated = sorted(
-            c.resident_id
-            for c in cases
-            if c.resident_id in urgent_expected
-            and any(t.to_state == CaseState.ESCALATED for t in c.history)
-        )
-        unsettled = [c.resident_id for c in cases if not is_settled(c)]
-        violations = find_violations(ctx)
-        ended = utcnow()
-        return DrillReport(
-            incident_id=ctx.incident_id,
-            profile_id=ctx.profile.id,
+        assert self.ctx is not None
+        return build_report(
+            self.ctx,
+            self.personas,
             activated=activated,
             started_at=self.started_at,
-            ended_at=ended,
             wall_seconds=round(self.elapsed(), 1),
-            cases=[
-                {
-                    "resident_id": c.resident_id,
-                    "wave": c.risk.wave,
-                    "points": c.risk.points,
-                    "state": str(c.state),
-                    "attempts": c.attempts,
-                    "result": str(c.latest_result.status) if c.latest_result else None,
-                    "needs": c.latest_result.needs if c.latest_result else [],
-                    "red_flags": c.latest_result.red_flags if c.latest_result else [],
-                    "backstop_raised": bool(
-                        c.latest_result
-                        and c.latest_result.backstop
-                        and c.latest_result.backstop.raised
-                    ),
-                    "expected": (
-                        self.personas[c.resident_id].ground_truth.status
-                        if c.resident_id in self.personas
-                        else None
-                    ),
-                    "outcome": c.outcome,
-                    "assigned_volunteer": c.assigned_volunteer,
-                    "history": [f"{t.from_state}->{t.to_state}" for t in c.history],
-                }
-                for c in cases
-            ],
-            all_settled=not unsettled and bool(cases),
-            unsettled=unsettled,
-            urgent_expected=urgent_expected,
-            urgent_escalated=urgent_escalated,
-            both_urgent_escalated=bool(urgent_expected) and urgent_escalated == urgent_expected,
-            policy_denials=len(ctx.audit.denials()),
-            policy_violations=len(violations),
-            violations=violations,
-            decisions=[
-                {
-                    "id": d.id,
-                    "name": d.name,
-                    "resident_id": d.resident_id,
-                    "status": d.status,
-                    "response": d.response,
-                }
-                for d in ctx.store.decisions(ctx.incident_id)
-            ],
-            messages=len(ctx.outbox),
-            audit_events=len(ctx.audit.events()),
-            corrections=list(ctx.extras.get("plan_corrections", [])),
         )
+
+
+def build_report(
+    ctx: RunContext,
+    personas: dict[str, Persona],
+    *,
+    activated: bool,
+    started_at: datetime,
+    wall_seconds: float,
+) -> DrillReport:
+    """The drill report from whatever store the context reads: memory, or DynamoDB in the cloud."""
+    cases = sorted(ctx.store.cases(ctx.incident_id), key=lambda c: (c.risk.wave, -c.risk.points))
+    urgent_expected = sorted(
+        rid for rid, p in personas.items() if p.ground_truth.status == "URGENT"
+    )
+    urgent_escalated = sorted(
+        c.resident_id
+        for c in cases
+        if c.resident_id in urgent_expected
+        and any(t.to_state == CaseState.ESCALATED for t in c.history)
+    )
+    unsettled = [c.resident_id for c in cases if not is_settled(c)]
+    violations = find_violations(ctx)
+    ended = utcnow()
+    return DrillReport(
+        incident_id=ctx.incident_id,
+        profile_id=ctx.profile.id,
+        activated=activated,
+        started_at=started_at,
+        ended_at=ended,
+        wall_seconds=wall_seconds,
+        cases=[
+            {
+                "resident_id": c.resident_id,
+                "wave": c.risk.wave,
+                "points": c.risk.points,
+                "state": str(c.state),
+                "attempts": c.attempts,
+                "result": str(c.latest_result.status) if c.latest_result else None,
+                "needs": c.latest_result.needs if c.latest_result else [],
+                "red_flags": c.latest_result.red_flags if c.latest_result else [],
+                "backstop_raised": bool(
+                    c.latest_result and c.latest_result.backstop and c.latest_result.backstop.raised
+                ),
+                "expected": (
+                    personas[c.resident_id].ground_truth.status
+                    if c.resident_id in personas
+                    else None
+                ),
+                "outcome": c.outcome,
+                "assigned_volunteer": c.assigned_volunteer,
+                "history": [f"{t.from_state}->{t.to_state}" for t in c.history],
+            }
+            for c in cases
+        ],
+        all_settled=not unsettled and bool(cases),
+        unsettled=unsettled,
+        urgent_expected=urgent_expected,
+        urgent_escalated=urgent_escalated,
+        both_urgent_escalated=bool(urgent_expected) and urgent_escalated == urgent_expected,
+        policy_denials=len(ctx.audit.denials()),
+        policy_violations=len(violations),
+        violations=violations,
+        decisions=[
+            {
+                "id": d.id,
+                "name": d.name,
+                "resident_id": d.resident_id,
+                "status": d.status,
+                "response": d.response,
+            }
+            for d in ctx.store.decisions(ctx.incident_id)
+        ],
+        messages=len(ctx.outbox),
+        audit_events=len(ctx.audit.events()),
+        corrections=list(ctx.extras.get("plan_corrections", [])),
+    )
