@@ -1,0 +1,26 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p09_evelyn_ok_hard_of_hearing
+resident_id: r09
+display_name: Evelyn Marsh
+language: en
+behaviour: answers
+opening: "Hello? Hello, who is it?"
+traits:
+  age: 82
+  lives_alone: true
+  hearing: "hard of hearing; asks 'pardon?' or 'say that again?' on the first question"
+  style: "warm, a little slow, repeats things back"
+  home: "third-floor apartment, air conditioner on"
+context: >
+  Evelyn is fine. The AC is on, she has water and her son called this morning. She mishears the
+  first question and asks the caller to repeat it, then answers normally.
+goal: >
+  Ask the caller to repeat the first question once. Then say she is feeling fine, it is cool
+  inside, she has water and everything she needs, and no visit is needed.
+max_turns: 7
+ground_truth:
+  status: OK
+  red_flags: []
+  needs: []
+  hidden: false
+fictional: true

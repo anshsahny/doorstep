@@ -1,0 +1,71 @@
+{
+  "_note": "REAL archived NWS product text (public domain) used as a replay fixture. Nothing in this file is fictional except the Doorstep org that replays it.",
+  "source": {
+    "provider": "Iowa Environmental Mesonet (IEM) NWS VTEC archive",
+    "json_url": "https://mesonet.agron.iastate.edu/json/vtec_event.py?wfo=PQR&year=2021&phenomena=EH&significance=W&etn=1",
+    "archive_page": "https://mesonet.agron.iastate.edu/vtec/?year=2021&wfo=KPQR&phenomena=EH&significance=W&eventid=0001",
+    "product_id": "202106232211-KPQR-WWUS76-NPWPQR",
+    "fetched_at": "2026-09-12T00:50:27Z",
+    "cap_fields_note": "severity/urgency/certainty are the standard NWS CAP values for this product type; the IEM archive stores the VTEC product, not the CAP message"
+  },
+  "vtec": "/O.NEW.KPQR.EH.W.0001.210626T1700Z-210629T0600Z/",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "IEM-21-KPQR-EH-W-0001",
+        "event": "Excessive Heat Warning",
+        "severity": "Severe",
+        "urgency": "Expected",
+        "certainty": "Likely",
+        "status": "Actual",
+        "messageType": "Alert",
+        "category": "Met",
+        "senderName": "NWS Portland OR",
+        "sent": "2021-06-23T22:11:00Z",
+        "effective": "2021-06-23T22:11:00Z",
+        "onset": "2021-06-26T17:00:00Z",
+        "expires": "2021-06-29T06:00:00Z",
+        "ends": "2021-06-29T06:00:00Z",
+        "headline": "EXCESSIVE HEAT WARNING IN EFFECT FROM 10 AM SATURDAY TO 11 PM PDT MONDAY",
+        "description": "* WHAT...Dangerously hot conditions with temperatures between 100\n  and 108. Highest temperatures expected on Sunday. Overnight lows\n  remaining in the upper 60s to low 70s.\n\n* WHERE...Portions of Southwest Washington and Northwest Oregon.\n\n* WHEN...From 10 AM Saturday to 11 PM PDT Monday.\n\n* IMPACTS...Extreme heat will significantly increase the \n  potential for heat related illnesses, particularly for those \n  working or participating in outdoor activities.\n\n* ADDITIONAL DETAILS...The hot daytime temperatures, combined with\n  warm overnight lows, will result in high heat risk and heat\n  related stress.\n\nPRECAUTIONARY/PREPAREDNESS ACTIONS...\n\nDrink plenty of fluids, stay in an air-conditioned room, stay out\nof the sun, and check up on relatives and neighbors. Young\nchildren and pets should never be left unattended in vehicles\nunder any circumstances.\n\nTake extra precautions if you work or spend time outside. When\npossible reschedule strenuous activities to early morning or\nevening. Know the signs and symptoms of heat exhaustion and heat\nstroke. Wear lightweight and loose fitting clothing when\npossible. To reduce risk during outdoor work, the Occupational\nSafety and Health Administration recommends scheduling frequent\nrest breaks in shaded or air conditioned environments. Anyone\novercome by heat should be moved to a cool and shaded location.\nHeat stroke is an emergency! Call 9 1 1.\n\n&&",
+        "areaDesc": "Cascade Foothills in Lane County; Cascades in Lane County; Central Coast Range of Western Oregon; Central Columbia River Gorge; Central Willamette Valley; Coast Range of Northwest Oregon; Greater Portland Metro Area; Greater Vancouver Area; Lower Columbia; Lower Columbia and I - 5 Corridor in Cowlitz County; North Oregon Coast; Northern Oregon Cascade Foothills; Northern Oregon Cascades; South  Willamette Valley; South Washington Cascade Foothills; South Washington Cascades; South Washington Coast; Upper Hood River Valley; Western Columbia River Gorge; Willapa Hills",
+        "geocode": {
+          "UGC": [
+            "ORZ001",
+            "ORZ003",
+            "ORZ004",
+            "ORZ005",
+            "ORZ006",
+            "ORZ007",
+            "ORZ008",
+            "ORZ010",
+            "ORZ011",
+            "ORZ012",
+            "ORZ013",
+            "ORZ014",
+            "ORZ015",
+            "ORZ016",
+            "WAZ019",
+            "WAZ020",
+            "WAZ021",
+            "WAZ022",
+            "WAZ039",
+            "WAZ040",
+            "WAZ045",
+            "WAZ046"
+          ]
+        },
+        "parameters": {
+          "VTEC": [
+            "/O.NEW.KPQR.EH.W.0001.210626T1700Z-210629T0600Z/"
+          ],
+          "NWSheadline": [
+            "EXCESSIVE HEAT WARNING IN EFFECT FROM 10 AM SATURDAY TO 11 PM PDT MONDAY"
+          ]
+        },
+        "rawProductText": "464 \nWWUS76 KPQR 232211\nNPWPQR\n\nURGENT - WEATHER MESSAGE\nNational Weather Service Portland OR\n311 PM PDT Wed Jun 23 2021\n\n...UNPRECEDENTED HEAT EXPECTED THIS WEEKEND INTO EARLY NEXT \nWEEK...\n\n.Strong high pressure over the Pacific Northwest will bring a\nstretch of unseasonably hot weather to much of southwest\nWashington and northwest Oregon. Temperatures will already be in\nthe low to mid 90s beginning Friday, but increase further to\ndangerous levels Saturday through Monday. High temperatures will \nrun 20 to 30 degrees above normal for late June at many locations,\nputting numerous daily, monthly and possible all-time high \ntemperature records in jeopardy. Overnight lows will also be \nunseasonably warm, limiting the amount of relief from the heat and\ncontributing to increased risk of heat related illnesses. The \nheat is expected to peak Sunday, then gradually trending downward\ntowards the middle of next week. However even next week will be \n10 to 20 degrees above normal.\n\nORZ005>008-014>016-WAZ020-022-039-040-045-046-241300-\n/O.UPG.KPQR.EH.A.0001.210625T2100Z-210629T0600Z/\n/O.NEW.KPQR.EH.W.0001.210626T1700Z-210629T0600Z/\nLower Columbia-Greater Portland Metro Area-\nCentral Willamette Valley-South Willamette Valley-\nUpper Hood River Valley-Western Columbia River Gorge-\nCentral Columbia River Gorge-Willapa Hills-I-\n5 Corridor in Cowlitz County-Greater Vancouver Area-\nSouth Washington Cascade Foothills-\nIncluding the cities of St. Helens, Clatskanie, Hillsboro, \nPortland, Wilsonville, Oregon City, Gresham, Troutdale, Salem, \nMcMinnville, Woodburn, Stayton, Dallas, Eugene, Springfield, \nCorvallis, Albany, Lebanon, Parkdale, Odell, Corbett, \nRooster Rock, Multnomah Falls, Cascade Locks, Hood River, \nWillapa, Frances, Ryderwood, Longview, Kelso, Castle Rock, \nVancouver, Battle Ground, Ridgefield, Washougal, Yacolt, Amboy, \nToutle, Ariel, Lake Merwin, Yale Lake, Cougar, North Bonneville, \nStevenson, Carson, and Underwood\n311 PM PDT Wed Jun 23 2021\n\n...EXCESSIVE HEAT WARNING IN EFFECT FROM 10 AM SATURDAY TO 11 PM\nPDT MONDAY...\n\n* WHAT...Dangerously hot conditions with temperatures between 100\n  and 108. Highest temperatures expected on Sunday. Overnight lows\n  remaining in the upper 60s to low 70s.\n\n* WHERE...Portions of Southwest Washington and Northwest Oregon.\n\n* WHEN...From 10 AM Saturday to 11 PM PDT Monday.\n\n* IMPACTS...Extreme heat will significantly increase the \n  potential for heat related illnesses, particularly for those \n  working or participating in outdoor activities.\n\n* ADDITIONAL DETAILS...The hot daytime temperatures, combined with\n  warm overnight lows, will result in high heat risk and heat\n  related stress.\n\nPRECAUTIONARY/PREPAREDNESS ACTIONS...\n\nDrink plenty of fluids, stay in an air-conditioned room, stay out\nof the sun, and check up on relatives and neighbors. Young\nchildren and pets should never be left unattended in vehicles\nunder any circumstances.\n\nTake extra precautions if you work or spend time outside. When\npossible reschedule strenuous activities to early morning or\nevening. Know the signs and symptoms of heat exhaustion and heat\nstroke. Wear lightweight and loose fitting clothing when\npossible. To reduce risk during outdoor work, the Occupational\nSafety and Health Administration recommends scheduling frequent\nrest breaks in shaded or air conditioned environments. Anyone\novercome by heat should be moved to a cool and shaded location.\nHeat stroke is an emergency! Call 9 1 1.\n\n&&\n\n$$\n\nORZ003-004-010>013-WAZ019-241300-\n/O.UPG.KPQR.EH.A.0001.210625T2100Z-210629T0600Z/\n/O.NEW.KPQR.EH.W.0001.210626T1700Z-210629T0600Z/\nCoast Range of Northwest Oregon-\nCentral Coast Range of Western Oregon-\nNorthern Oregon Cascade Foothills-Northern Oregon Cascades-\nCascade Foothills in Lane County-Cascades in Lane County-\nSouth Washington Cascades-\nIncluding the cities of Vernonia, Jewell, Sunset Summit, \nLees Camp, Trask, Grande Ronde, Burnt Woods, Tidewater, \nSwisshome, Veneta, Sandy, Estacada, Silver Falls State Park, \nSweet Home, Government Camp, Detroit, Santiam Pass, Vida, Jasper,\nLowell, Cottage Grove, McKenzie Pass, McKenzie Bridge, Oakridge, \nWillamette Pass, Coldwater Ridge Visitors Center, \nMount St. Helens, and Wind River Valley\n311 PM PDT Wed Jun 23 2021\n\n...EXCESSIVE HEAT WARNING IN EFFECT FROM 10 AM SATURDAY TO 11 PM\nPDT MONDAY...\n\n* WHAT...Dangerously hot conditions with temperatures in the mid\n  90s to low 100s expected. Overnight lows in the mid-60s to low \n  70s.\n\n* WHERE...In Washington, South Washington Cascades. In Oregon, \n  Coast Range of Northwest Oregon, Central Coast Range of \n  Western Oregon, Northern Oregon Cascade Foothills, Northern \n  Oregon Cascades, Cascade Foothills in Lane County and Cascades \n  in Lane County.\n\n* WHEN...From 10 AM Saturday to 11 PM PDT Monday.\n\n* IMPACTS...Extreme heat will significantly increase the \n  potential for heat related illnesses, particularly for those \n  working or participating in outdoor activities.\n\n* ADDITIONAL DETAILS...The hot daytime temperatures, combined with\n  warm overnight lows, will result in high heat risk and heat\n  related stress.\n\nPRECAUTIONARY/PREPAREDNESS ACTIONS...\n\nDrink plenty of fluids, stay in an air-conditioned room, stay out\nof the sun, and check up on relatives and neighbors. Young\nchildren and pets should never be left unattended in vehicles\nunder any circumstances.\n\nTake extra precautions if you work or spend time outside. When\npossible reschedule strenuous activities to early morning or\nevening. Know the signs and symptoms of heat exhaustion and heat\nstroke. Wear lightweight and loose fitting clothing when\npossible. To reduce risk during outdoor work, the Occupational\nSafety and Health Administration recommends scheduling frequent\nrest breaks in shaded or air conditioned environments. Anyone\novercome by heat should be moved to a cool and shaded location.\nHeat stroke is an emergency! Call 9 1 1.\n\n&&\n\n$$\n\nFor more information from the National Weather Service visit\nhttps://weather.gov/portland\n"
+      }
+    }
+  ]
+}

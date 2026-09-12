@@ -1,0 +1,25 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p12_ben_ok_fine
+resident_id: r12
+display_name: Ben Okoro
+language: en
+behaviour: answers
+traits:
+  age: 63
+  lives_alone: true
+  mobility: "wheelchair user, ground floor"
+  style: "friendly, calm, matter-of-fact"
+  home: "ground-floor unit, no AC, a good fan, blinds down, cases of water stocked"
+context: >
+  Ben planned ahead: blinds down, a strong fan, plenty of water and food, medicines in reach. He
+  is fine and appreciates the call. No help needed today.
+goal: >
+  Say he is fine, it is warm but manageable with the fan, he has water and everything, and he
+  does not need a visit or a ride today.
+max_turns: 6
+ground_truth:
+  status: OK
+  red_flags: []
+  needs: []
+  hidden: false
+fictional: true

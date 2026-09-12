@@ -56,8 +56,8 @@ smoke-05: ## Telegram message with inline buttons; waits for the tap (ARGS=--who
 	$(PY) scripts/smoke/05_telegram_ping.py $(ARGS)
 
 # --- Later phases ---
-local-drill: ## Phase 1: run a drill locally with simulated residents (terminal board)
-	@echo "make local-drill arrives in Phase 1"; exit 1
+local-drill: ## run a drill locally with simulated residents and a terminal board (ARGS=--auto-approve etc.)
+	$(PY) scripts/local_drill.py $(ARGS)
 
 deploy: ## Phase 3: CDK deploy + AgentCore deploy
 	@echo "make deploy arrives in Phase 3"; exit 1

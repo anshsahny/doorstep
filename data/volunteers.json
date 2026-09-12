@@ -1,0 +1,76 @@
+{
+  "_note": "FICTIONAL volunteers for the Doorstep demo. Names are invented. Telegram chat IDs are never stored here: telegram_chat_id_ref names the environment variable (and index) that holds the real ID at runtime.",
+  "fictional": true,
+  "volunteers": [
+    {
+      "id": "cap-maria",
+      "name": "Maria Delgado",
+      "role": "captain",
+      "telegram_chat_id_ref": "env:TELEGRAM_CAPTAIN_CHAT_ID",
+      "lat": 45.4862,
+      "lng": -122.5951,
+      "available": true,
+      "notes": "Block captain. Has a day job; makes decisions from her phone."
+    },
+    {
+      "id": "vol-tom",
+      "name": "Tom Nguyen",
+      "role": "volunteer",
+      "telegram_chat_id_ref": "env:TELEGRAM_VOLUNTEER_CHAT_IDS[0]",
+      "lat": 45.4838,
+      "lng": -122.5902,
+      "available": true,
+      "notes": "Lives two blocks over. Has a car."
+    },
+    {
+      "id": "vol-priya",
+      "name": "Priya Raman",
+      "role": "volunteer",
+      "telegram_chat_id_ref": "env:TELEGRAM_VOLUNTEER_CHAT_IDS[1]",
+      "lat": 45.4881,
+      "lng": -122.5990,
+      "available": true,
+      "notes": "Speaks Spanish. On foot."
+    },
+    {
+      "id": "vol-dwayne",
+      "name": "Dwayne Carter",
+      "role": "volunteer",
+      "telegram_chat_id_ref": "env:TELEGRAM_VOLUNTEER_CHAT_IDS[2]",
+      "lat": 45.4823,
+      "lng": -122.6011,
+      "available": true,
+      "notes": "Has a car. Available afternoons."
+    },
+    {
+      "id": "vol-helen",
+      "name": "Helen Park",
+      "role": "volunteer",
+      "telegram_chat_id_ref": "env:TELEGRAM_VOLUNTEER_CHAT_IDS[3]",
+      "lat": 45.4899,
+      "lng": -122.5880,
+      "available": false,
+      "notes": "Out of town this week."
+    },
+    {
+      "id": "vol-sam",
+      "name": "Sam Okafor",
+      "role": "volunteer",
+      "telegram_chat_id_ref": "env:TELEGRAM_VOLUNTEER_CHAT_IDS[4]",
+      "lat": 45.4842,
+      "lng": -122.5968,
+      "available": true,
+      "notes": "Lives in Juniper Court, ground floor."
+    },
+    {
+      "id": "vol-ines",
+      "name": "Ines Moreau",
+      "role": "volunteer",
+      "telegram_chat_id_ref": "env:TELEGRAM_VOLUNTEER_CHAT_IDS[5]",
+      "lat": 45.4910,
+      "lng": -122.6040,
+      "available": true,
+      "notes": "Nurse, evening shifts. Available until 3 PM."
+    }
+  ]
+}

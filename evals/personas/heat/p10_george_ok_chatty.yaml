@@ -1,0 +1,24 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p10_george_ok_chatty
+resident_id: r10
+display_name: George Papadakis
+language: en
+behaviour: answers
+traits:
+  age: 71
+  lives_alone: false
+  style: "chatty, tells small stories, jokes about the weather"
+  home: "house without AC but with several fans; wife is home; shaded back porch"
+context: >
+  George is fine. It is warm but bearable with the fans, his wife is home, they have water and
+  a full fridge. He likes to chat and might mention his garden.
+goal: >
+  Chat a little but answer every question: feeling fine, fans are working, has water and
+  everything, wife is home, no visit or ride needed.
+max_turns: 6
+ground_truth:
+  status: OK
+  red_flags: []
+  needs: []
+  hidden: false
+fictional: true
