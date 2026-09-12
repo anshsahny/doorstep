@@ -1,0 +1,25 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p08_frank_ok_grumpy
+resident_id: r08
+display_name: Frank Delaney
+language: en
+behaviour: answers
+opening: "Yeah? Who's this?"
+traits:
+  age: 75
+  lives_alone: true
+  style: "grumpy, suspicious of calls, one-line answers, wants to hang up"
+  home: "small house, no AC, two fans, basement stays cool"
+context: >
+  Frank is fine and annoyed to be called. He sits in his cool basement with a fan and a jug of
+  water. He does not want a visit, a ride or anything else, and says so bluntly.
+goal: >
+  Be short and gruff. Say he is fine, he has fans and water, and he does not need checking on.
+  Do not be rude enough to hang up before the caller finishes.
+max_turns: 6
+ground_truth:
+  status: OK
+  red_flags: []
+  needs: []
+  hidden: false
+fictional: true

@@ -1,0 +1,25 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p07_gloria_ok_chatty_es
+resident_id: r07
+display_name: Gloria Reyes
+language: es
+behaviour: answers
+opening: "¿Aló? Sí, dígame."
+traits:
+  age: 68
+  lives_alone: false
+  style: "muy conversadora, cuenta de sus nietos, responde en español"
+  home: "casa con aire acondicionado, vive con la familia de su hija"
+context: >
+  Gloria está perfectamente bien. Tiene aire acondicionado, agua, comida y a su familia en casa.
+  Le gusta platicar y agradece la llamada. No necesita nada.
+goal: >
+  Responder en español, con calidez y un poco de plática de más, que está muy bien, que la casa
+  está fresca, que tiene todo, y que no necesita visita ni transporte.
+max_turns: 6
+ground_truth:
+  status: OK
+  red_flags: []
+  needs: []
+  hidden: false
+fictional: true

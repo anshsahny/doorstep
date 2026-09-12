@@ -1,0 +1,76 @@
+# Minimal made-up hazard profile used by the Gate 1 tests. It shares nothing with heat: different
+# alert events, risk fields, questions, red flags, needs, relief-centre kind and tips. If the
+# agents, tools or backstop behave differently with this profile loaded, the profile design works.
+
+id: dummy
+display_name: "Purple smoke (test hazard)"
+include_shared: false
+
+common:
+  greeting_en: "Hello {first_name}, this is the {org_name} test line."
+  greeting_es: "Hola {first_name}, habla la línea de prueba de {org_name}."
+  intro_en: "There is {hazard_phrase} in the area. Can you talk?"
+  intro_es: "Hay {hazard_phrase} en la zona. ¿Puede hablar?"
+  closing_en: "Test closing. Call 911 if unwell."
+  closing_es: "Cierre de prueba. Llame al 911 si se siente mal."
+  red_flag_response_en: "Test red-flag response."
+  red_flag_response_es: "Respuesta de prueba."
+  emergency_response_en: "Test emergency response."
+  emergency_response_es: "Respuesta de emergencia de prueba."
+  voicemail_en: "Test voicemail about {hazard_short}."
+  voicemail_es: "Buzón de prueba sobre {hazard_short}."
+
+alert_events:
+  - event: "Purple Smoke Warning"
+    vtec: "PS.W"
+    activation: auto
+  - event: "Purple Smoke Advisory"
+    vtec: "PS.Y"
+    activation: ask
+
+risk_factors:
+  - id: has_boat
+    label: "Owns a boat"
+    field: has_boat
+    equals: true
+    points: 5
+  - id: lives_alone
+    label: "Lives alone"
+    field: lives_alone
+    equals: true
+    points: 1
+
+wave_thresholds:
+  wave1_min: 5
+  wave2_min: 3
+
+checkin_questions:
+  - id: smoke_colour
+    en: "What colour is the smoke outside your window?"
+    es: "¿De qué color es el humo afuera de su ventana?"
+    maps_to_needs: ["sandbags"]
+  - id: boat_ready
+    en: "Is your boat ready?"
+    es: "¿Está listo su barco?"
+
+red_flags:
+  - category: purple_smoke_inside
+    label: "Purple smoke indoors"
+    en: ["purple smoke inside", "purple haze"]
+    es: ["humo morado adentro"]
+
+needs:
+  - id: sandbags
+    label: "Sandbags"
+
+relief_centre_kind: shelter
+
+script:
+  hazard_phrase_en: "a purple smoke warning"
+  hazard_phrase_es: "una alerta de humo morado"
+  hazard_short_en: "the purple smoke"
+  hazard_short_es: "el humo morado"
+  tip_en: "Close the windows and count your sandbags."
+  tip_es: "Cierre las ventanas y cuente sus sacos de arena."
+
+recheck_minutes: 30

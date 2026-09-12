@@ -1,0 +1,66 @@
+# Parts shared by every hazard profile (SPEC §3a, §6.1, §9).
+# A hazard profile is merged on top of this file unless it sets `include_shared: false`.
+# Placeholders: {first_name} {org_name} {hazard_phrase} {hazard_short}
+
+common:
+  greeting_en: "Hi, is this {first_name}? This is Doorstep, calling for the {org_name} neighbour check-in team."
+  greeting_es: "Hola, ¿hablo con {first_name}? Le llamo de Doorstep, del equipo vecinal de {org_name}."
+  intro_en: "There's {hazard_phrase} today, so we're checking on everyone. Is now OK for a quick minute?"
+  intro_es: "Hoy hay {hazard_phrase}, así que estamos llamando a todos los vecinos. ¿Tiene un minuto ahora?"
+  closing_en: "We'll check in again this evening. If you feel unwell, call 911."
+  closing_es: "Volveremos a llamar esta tarde. Si se siente mal, llame al 911."
+  red_flag_response_en: "I'm getting someone to check on you right now. If you feel very unwell, please call 911."
+  red_flag_response_es: "Voy a pedir que alguien vaya a verle ahora mismo. Si se siente muy mal, por favor llame al 911."
+  emergency_response_en: "Please hang up and call 911 right now. Someone from the team will follow up."
+  emergency_response_es: "Por favor cuelgue y llame al 911 ahora mismo. Alguien del equipo le dará seguimiento."
+  voicemail_en: "This is the {org_name} neighbour team checking in because of {hazard_short}. We'll try again soon."
+  voicemail_es: "Le llama el equipo vecinal de {org_name} por {hazard_short}. Volveremos a intentarlo pronto."
+
+# Step 2 of the protocol is the same for every hazard; steps 3-5 come from the profile.
+checkin_questions:
+  - id: feeling
+    en: "How are you feeling right now?"
+    es: "¿Cómo se siente ahora mismo?"
+
+# Deterministic backstop rules shared by every hazard. Matching is case-insensitive on the
+# resident's own words. Single-word phrases are skipped when a negation ("not", "no", "never")
+# appears within the three preceding words; multi-word phrases always match.
+red_flags:
+  - category: confusion
+    label: "Confusion or disorientation"
+    en: ["confused", "disoriented", "not sure what day", "what day it is", "don't know where i am", "can't think straight", "mixed up", "muddled"]
+    es: ["confundido", "confundida", "desorientado", "desorientada", "no sé qué día", "no sé dónde estoy"]
+  - category: dizziness_fainting
+    label: "Dizziness or fainting"
+    en: ["dizzy", "light-headed", "lightheaded", "faint", "fainted", "passed out", "blacked out", "room is spinning", "woozy"]
+    es: ["mareado", "mareada", "me desmayé", "desmayo", "me voy a desmayar", "todo da vueltas"]
+  - category: chest_pain
+    label: "Chest pain"
+    en: ["chest pain", "chest hurts", "pressure in my chest", "tight chest", "pain in my chest"]
+    es: ["dolor en el pecho", "me duele el pecho", "presión en el pecho"]
+  - category: trouble_breathing
+    label: "Trouble breathing"
+    en: ["can't breathe", "cannot breathe", "trouble breathing", "hard to breathe", "short of breath", "gasping"]
+    es: ["no puedo respirar", "me falta el aire", "falta de aire", "me cuesta respirar"]
+  - category: cannot_get_up
+    label: "Cannot get up"
+    en: ["can't get up", "cannot get up", "can't stand up", "on the floor", "fell and can't", "can't move"]
+    es: ["no puedo levantarme", "no me puedo levantar", "estoy en el suelo", "me caí y no puedo"]
+  - category: other
+    label: "Says it is an emergency"
+    en: ["it's an emergency", "this is an emergency", "need an ambulance", "call an ambulance"]
+    es: ["es una emergencia", "necesito una ambulancia", "llame a una ambulancia"]
+
+needs:
+  - id: water
+    label: "Water"
+  - id: ride
+    label: "A ride to a relief centre"
+  - id: medication_access
+    label: "Access to medicines"
+  - id: food
+    label: "Food"
+  - id: company
+    label: "Company or a check-in visit"
+  - id: power
+    label: "Power for a medical device"

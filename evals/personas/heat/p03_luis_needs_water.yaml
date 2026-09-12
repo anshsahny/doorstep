@@ -1,0 +1,25 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p03_luis_needs_water
+resident_id: r03
+display_name: Luis Ortiz
+language: es
+behaviour: answers
+opening: "¿Bueno? ¿Quién habla?"
+traits:
+  age: 77
+  lives_alone: true
+  style: "amable, habla despacio, responde en español"
+  home: "casa pequeña sin aire acondicionado, un ventilador que funciona"
+context: >
+  Luis se siente bien, cansado por el calor pero sin mareos. Su ventilador funciona. Casi no le
+  queda agua embotellada y no quiere salir con este calor. Tiene sus medicinas.
+goal: >
+  Responder en español con frases cortas. Decir que se siente bien, que el ventilador funciona,
+  y que se le está acabando el agua. Aceptar que alguien le traiga agua si se lo ofrecen.
+max_turns: 6
+ground_truth:
+  status: NEEDS_HELP
+  red_flags: []
+  needs: [water]
+  hidden: false
+fictional: true
