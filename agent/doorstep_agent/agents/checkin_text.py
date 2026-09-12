@@ -81,8 +81,11 @@ def system_prompt(ctx: RunContext, resident: Resident) -> str:
         "If they are hard of hearing: speak slower and confirm by repeating back.\n\n"
         "The script. Say the lines in this order, in your own natural phrasing:\n"
         f'1. Greeting: "{lines["greeting"]} {lines["intro"]}"\n'
-        "2. Ask the questions below one at a time. After each answer call record_answer with "
-        "the question id in brackets and their answer in a few words:\n"
+        "2. Ask EVERY question below, in order, one at a time, and call record_answer after each "
+        "answer with the question id in brackets and their answer in a few words. Ask each one "
+        "out loud even if the resident already volunteered something that seems to cover it: "
+        "people downplay how they feel until asked directly, so never skip a question or merge "
+        "two into one. If an answer is vague, ask once more before moving on:\n"
         f"{questions}\n"
         f'3. Close with the tip and the closing line: "{lines["tip"]} {lines["closing"]}" '
         "then call end_call with a one-sentence summary.\n\n"
@@ -97,13 +100,19 @@ def system_prompt(ctx: RunContext, resident: Resident) -> str:
     )
 
 
-def build_checkin_agent(ctx: RunContext, resident: Resident) -> Agent:
+# One turn may legitimately take several model calls: record two or three answers, then speak.
+# The guard only stops a turn that never converges. The caller keeps the instance so it can tell
+# a cut-short turn from a normal one.
+MAX_MODEL_CALLS_PER_TURN = 8
+
+
+def build_checkin_agent(ctx: RunContext, resident: Resident, guard: ModelCallGuard) -> Agent:
     return Agent(
         name=AGENT_NAME,
         model=make_model(ctx, temperature=0.3, max_tokens=300),
         system_prompt=system_prompt(ctx, resident),
         tools=CHECKIN_TOOLS,
-        hooks=[AuditHook(f"agent:{AGENT_NAME}"), ModelCallGuard(max_calls=4)],
+        hooks=[AuditHook(f"agent:{AGENT_NAME}"), guard],
         callback_handler=None,
     )
 
@@ -135,7 +144,8 @@ async def run_text_checkin(
         )
         return attempt
 
-    agent = build_checkin_agent(ctx, resident)
+    guard = ModelCallGuard(max_calls=MAX_MODEL_CALLS_PER_TURN)
+    agent = build_checkin_agent(ctx, resident, guard)
     attempt.transcript.append(ConversationTurn(speaker="resident", text=opening))
     resident_line: str | None = opening
     timeout = ctx.settings.step_timeout_seconds
@@ -147,6 +157,12 @@ async def run_text_checkin(
         except (TimeoutError, asyncio.CancelledError):
             attempt.transcript.append(
                 ConversationTurn(speaker="agent", text="[agent turn timed out]")
+            )
+            break
+        if guard.tripped:
+            # The cancel message is not something the agent said; end the call cleanly.
+            attempt.transcript.append(
+                ConversationTurn(speaker="agent", text="[call cut short: model-call guard]")
             )
             break
         agent_text = str(result).strip()
