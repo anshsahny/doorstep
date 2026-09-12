@@ -82,6 +82,50 @@ These are the only times the agent interrupts a human.
 
 Volunteers get **tasks**, not decisions: "Please check on the resident at Unit 3C, Juniper Court. She didn't answer three calls. Knock and speak up; she's hard of hearing." Buttons: `On my way` · `They're OK` · `Need more help`.
 
+### 4a. Rules for every decision (added in Phase 2)
+
+The four decisions above say what the captain is asked. These say how any of them behaves,
+whatever channel it arrives on. All of it is enforced in `decisions.respond_to_decision`, which
+Telegram, the dashboard and the drill runner all call.
+
+**Who may answer.** The four `doorstep-*` captain decisions are answerable **only by the
+captain**; a volunteer task reply only by **that assigned volunteer**. The responder is resolved
+from the channel identity (Telegram chat id, dashboard session) to a roster member and checked
+against the one person the decision was addressed to — a Telegram user who is not on the roster
+can answer nothing. In sandbox incidents a `judge` acts as the captain of their own drill.
+Cedar governs *tool calls*, not decision responses, so this check is code plus an audit event.
+
+**Answered exactly once.** A decision is `draft` while the raising tool is still inside the agent
+loop, `pending` once the runner has attached the interrupt and a channel has delivered it, then
+one of `answered` or `expired`. Only a `pending` decision can be answered. A second tap, a tap
+after a timeout, and a redelivered webhook update therefore cannot re-run a tool; each is
+reported back to the human saying which of those happened.
+
+**Timeouts.** A pending decision expires after `decision_ttl_minutes` — **15 real minutes, never
+compressed by drill mode.** Time compression speeds up the agent's own timers (retries,
+re-checks); the captain reading the message is a real person at real speed, and compressing their
+deadline turned 15 minutes into 30 seconds in a live drill. Expiry never decides on a human's
+behalf: nothing is sent, the case stays escalated and open, and the message is edited to say so.
+Nothing is ever auto-approved.
+
+**Carrying out a choice.** The captain's choice resumes the paused agent *and* is applied by
+deterministic code, because the model cannot be relied on to act on it. Two live drills proved
+this twice: once the dispatcher forgot to close a case after "I'm handling it", once it never
+sent the volunteer after "Send Sam". **Every option action must have a deterministic branch** —
+`resolve`, `escalate`, `acknowledge` and `assign_volunteer` today — and each must be idempotent,
+so it is safe whether or not the model got there first. An option whose action has no branch is a
+decision the system can silently lose. The resumed invocation carries the responder's role, so a
+tool the agent may not call — `record_emergency_call` — is legal precisely because a captain is
+acting.
+
+**No double approval.** An `assign_volunteer` call that is carrying out an already-answered
+decision does not interrupt again: the answered decision is the authority. Without this, a captain
+who picks "Send Tom" from an escalation is asked to approve the same door-knock twice.
+
+**Delivery.** Messages go only to chat ids that a roster member resolves to; anything else is
+refused and audited rather than sent. Drills and sandbox never touch a real channel unless
+explicitly asked (`--telegram`).
+
 ## 5. Architecture
 
 ```
@@ -185,7 +229,7 @@ Timers use SQS DelaySeconds. Drill mode compresses 10 minutes to 20 seconds.
 | `place_checkin_call(resident_id)` | real phone call | live mode, allowlisted, consented, < 3 attempts/hour, 8 AM–9 PM local unless severity is Extreme |
 | `schedule_recheck(resident_id, minutes)` | timer | always permitted |
 | `send_resident_tip(resident_id, kind)` | message played or read to the resident | always permitted |
-| `assign_volunteer(resident_id, volunteer_id, include_brief)` | Telegram task | interrupt if risk ≥ 8; brief only to the assigned volunteer |
+| `assign_volunteer(resident_id, volunteer_id, include_brief)` | Telegram task | interrupt if wave 1 (score ≥ 8), unless carrying out an answered decision; brief only to the assigned volunteer |
 | `broadcast_to_volunteers(message, include_resident_details)` | Telegram group message | forbidden when `include_resident_details` is true |
 | `notify_family(resident_id)` | family contact (Telegram or dashboard only in this build) | only with `family_consent` |
 | `escalate_to_captain(resident_id, reason, options)` | interrupt | always permitted |
@@ -287,7 +331,7 @@ Rules:
 | `INC#<id>` | `META` | org, mode(live/drill/sandbox), alert, severity, status, started_at, sandbox_session, metrics |
 | `INC#<id>` | `CASE#<res>` | state, attempts, results[], assigned_volunteer, timestamps |
 | `INC#<id>` | `EVT#<ts>#<seq>` | actor, type, tool, input_summary, policy_decision, reason, rationale |
-| `INC#<id>` | `DEC#<id>` | interrupt_id, name, reason, options, status, responder, responded_at |
+| `INC#<id>` | `DEC#<id>` | name, reason, options, audience, status(draft/pending/answered/expired), tool_use_id, interrupt_id, session_id, responder, responded_at, expires_at, delivery[] |
 
 - GSI1: `status#<active>` → incidents (for the poller and dashboard).
 - Sandbox drills copy a 12-resident subset per incident. They never modify the org roster.
@@ -363,12 +407,21 @@ Proposed tokens (review them before building, and revise anything that reads as 
 
 - **Sandbox drill:**
   - 12 residents, 3-turn check-ins, Nova Micro personas, Nova 2 Lite agents.
-  - Target cost under $0.05 per drill.
-  - Limits: 1 drill per IP per 10 minutes; 30 drills per day globally.
-  - Browser voice: 3 minutes per session, 20 sessions per day.
+  - **Measured cost: about $0.37 per drill** (Phase 2, `docs/COST.md`). The earlier $0.05 target
+    assumed Nova Lite 1.0; Nova 2 Lite input is $0.33/1M tokens and is 90% of all spend.
+  - Limits: 1 drill per IP per 10 minutes; 30 drills per day globally; **and a cumulative cap for
+    the whole judging period**. A daily cap does not bound the total: 30/day for the 24 days from
+    Sep 14 to Oct 8 is about $266, which exceeds the AWS credits on hand and would land on a real
+    card mid-judging. Size the cumulative cap from the credits actually remaining (about 300
+    drills at the time of writing) and fail closed when it is reached.
+  - Browser voice: 3 minutes per session, 20 sessions per day. **Nova 2 Sonic's cost is not yet
+    known** — eight Phase 0 sessions produced no billable line item. Measure it on the first real
+    call in Phase 4 and size this cap from the measurement, not from the guess.
   - Kill switch in SSM.
   - All caps return a friendly message and link to the demo video.
-- **Budget alarms:** $5, $15, $30. Tally costs in `docs/COST.md`.
+- **Budget alarms:** $5, $15, $30 — note these track **gross usage before credits**, so they are a
+  credit-burn meter, not a bill. A budget on *net* cost is the one that means real money. Tally
+  costs in `docs/COST.md`.
 
 ## 15. Configuration
 

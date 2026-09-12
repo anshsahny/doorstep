@@ -11,7 +11,8 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-from dataclasses import dataclass, field
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -23,11 +24,13 @@ from .agents.dispatcher import dispatch
 from .agents.persona import NoAnswerChannel, Persona, PersonaChannel, load_personas
 from .audit import AuditLog
 from .config import Settings, settings
+from .decisions import Responder, expire_due_decisions, respond_to_decision
 from .graph import start_incident
 from .models import Alert, CaseState, Incident, ResidentCase, utcnow
+from .notify.base import Notifier, RecordingNotifier
 from .profiles import load_profile
 from .runtime import RunContext
-from .state_machine import CasePolicy, Clock, is_settled, transition
+from .state_machine import CasePolicy, Clock, is_settled
 from .store import InMemoryStore, load_drill_subset
 from .violations import find_violations
 
@@ -80,8 +83,18 @@ class DrillRunner:
         show_board: bool = True,
         clear_screen: bool = True,
         cfg: Settings | None = None,
+        notifier: Notifier | None = None,
+        notifier_taps: Callable[[RunContext], Awaitable[list[str]]] | None = None,
+        decision_ttl_minutes: float | None = None,
     ) -> None:
         self.cfg = cfg or settings()
+        if decision_ttl_minutes is not None:
+            # Real minutes, never compressed: see `decisions.expires_at`.
+            self.cfg = replace(self.cfg, decision_ttl_minutes=decision_ttl_minutes)
+        # Nothing leaves the process unless a real channel is passed in on purpose.
+        self.notifier: Notifier = notifier or RecordingNotifier()
+        self.notifier_taps = notifier_taps
+        self.taps: list[str] = []
         self.profile = load_profile(profile_id or self.cfg.default_profile)
         self.alert_path = alert_path or self.cfg.default_alert_fixture
         self.auto_approve = auto_approve
@@ -173,34 +186,40 @@ class DrillRunner:
             ctx.store.save_case(case)
         self._refresh()
 
-    # --- decisions (Phase 1: a simulated captain when --auto-approve is set) ---
+    # --- decisions ---
 
-    def _auto_answer_decisions(self) -> None:
+    async def _handle_decisions(self) -> None:
+        """Expire what nobody answered, deliver what is new, and collect answers.
+
+        Every path here ends in `respond_to_decision`, including the unattended drill's simulated
+        captain, so `--auto-approve` exercises the same resume and idempotency machinery a real
+        captain's thumb does rather than a shortcut around it.
+        """
         ctx = self.ctx
         assert ctx is not None
+        expire_due_decisions(ctx)
+        self._deliver_pending()
+        if self.notifier_taps is not None:
+            self.taps.extend(await self.notifier_taps(ctx))
         if not self.auto_approve:
             return
         for decision in ctx.store.decisions(ctx.incident_id, status="pending"):
-            option = decision.options[0]
-            decision.status, decision.responder, decision.response = (
-                "answered",
-                "captain:auto-approve",
-                option.id,
+            await respond_to_decision(
+                ctx,
+                decision.id,
+                decision.options[0].id,
+                Responder(source="drill", external_id="auto-approve"),
+                actor_override="captain:auto-approve",
             )
-            decision.responded_at = ctx.clock.now()
-            ctx.store.save_decision(decision)
-            ctx.audit.record(
-                actor="captain:auto-approve",
-                type="decision",
-                resident_id=decision.resident_id,
-                reason=f"{decision.id} [{decision.name}] -> {option.label}",
-            )
-            if option.action == "resolve" and decision.resident_id:
-                case = ctx.store.case(ctx.incident_id, decision.resident_id)
-                if case.state == CaseState.ESCALATED:
-                    transition(case, CaseState.RESOLVED, reason=f"captain: {option.label}")
-                    case.outcome = "captain handling"
-                    ctx.store.save_case(case)
+
+    def _deliver_pending(self) -> None:
+        """Hand every newly answerable decision to the channel, exactly once."""
+        ctx = self.ctx
+        assert ctx is not None
+        for decision in ctx.store.decisions(ctx.incident_id, status="pending"):
+            if decision.delivered_to(decision.audience):
+                continue
+            self.notifier.deliver_decision(ctx, decision)
 
     # --- main loop ---
 
@@ -237,7 +256,7 @@ class DrillRunner:
 
         order = {rid: i for i, rid in enumerate(ctx.extras.get("queued", []))}
         while True:
-            self._auto_answer_decisions()
+            await self._handle_decisions()
             cases = sorted(
                 ctx.store.cases(ctx.incident_id), key=lambda c: order.get(c.resident_id, 99)
             )
@@ -253,8 +272,11 @@ class DrillRunner:
                 ):
                     running[case.resident_id] = asyncio.create_task(guarded(case))
             active = [t for t in running.values() if not t.done()]
+            # A decision nobody has answered yet keeps the drill alive: with a real captain on
+            # the other end, the run is not finished, it is waiting.
+            waiting = bool(ctx.store.decisions(ctx.incident_id, status="pending"))
             settled = all(is_settled(c) for c in cases)
-            if settled and not active:
+            if settled and not active and not waiting:
                 break
             if self.elapsed() > self.timeout_seconds:
                 ctx.audit.record(
@@ -267,7 +289,7 @@ class DrillRunner:
             self._refresh()
             await asyncio.sleep(1.0)
 
-        self._auto_answer_decisions()
+        await self._handle_decisions()
         self._refresh()
         return self._report(activated=True)
 

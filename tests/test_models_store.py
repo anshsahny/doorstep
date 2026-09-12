@@ -115,10 +115,18 @@ def test_incident_case_decision_and_events_round_trip(store: InMemoryStore) -> N
         name="doorstep-urgent-red-flag",
         reason="test",
         options=[DecisionOption(id="handle", label="I'm handling it", action="resolve")],
+        tool_use_id="tu-1",
     )
     store.save_decision(decision)
-    assert store.decisions("inc-1", status="pending")[0].id == "dec-1"
+    # A decision starts as a draft: raised, but not answerable until the runner has stamped the
+    # interrupt on it, so nobody can be shown a button for it yet.
+    assert store.decisions("inc-1", status="draft")[0].id == "dec-1"
+    assert store.decisions("inc-1", status="pending") == []
     assert store.decisions("inc-1", status="answered") == []
+    # The record is found again by the tool use that raised it, so a re-executed tool body
+    # cannot create a second one.
+    assert store.decision_for_tool_use("inc-1", "tu-1") is decision
+    assert store.decision_for_tool_use("inc-1", "tu-other") is None
 
     assert store.next_seq("inc-1") == 1
     store.append_event(

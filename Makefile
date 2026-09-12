@@ -11,7 +11,7 @@ PY := $(UV) run python
 
 .PHONY: help setup node-check test lint fmt check \
 	smoke-01 smoke-02 smoke-03 smoke-04 smoke-05 \
-	local-drill deploy evals web web-deploy
+	local-drill telegram-drill deploy evals web web-deploy
 
 help: ## list targets
 	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-14s %s\n", $$1, $$2}'
@@ -58,6 +58,9 @@ smoke-05: ## Telegram message with inline buttons; waits for the tap (ARGS=--who
 # --- Later phases ---
 local-drill: ## run a drill locally with simulated residents and a terminal board (ARGS=--auto-approve etc.)
 	$(PY) scripts/local_drill.py $(ARGS)
+
+telegram-drill: ## same drill, but decisions go to the real roster chats and wait for real taps
+	$(PY) scripts/local_drill.py --telegram --no-clear $(ARGS)
 
 deploy: ## Phase 3: CDK deploy + AgentCore deploy
 	@echo "make deploy arrives in Phase 3"; exit 1

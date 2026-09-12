@@ -428,8 +428,26 @@ class DecisionOption(BaseModel):
     args: dict[str, Any] = Field(default_factory=dict)
 
 
+class Delivery(BaseModel):
+    """Where a decision was actually delivered, so the message can be edited once answered."""
+
+    channel: Literal["telegram", "web", "board"]
+    recipient: str = Field(description="Roster id of the human it was sent to")
+    message_ref: str = Field(default="", description="Channel message id, for editing in place")
+    sent_at: datetime = Field(default_factory=utcnow)
+
+
+DecisionStatus = Literal["draft", "pending", "answered", "expired"]
+
+
 class Decision(BaseModel):
-    """A pending or answered human decision (SPEC §4)."""
+    """A human decision (SPEC §4), from raised to answered.
+
+    Lifecycle: `draft` while the tool or hook that raised it is still inside the agent loop and
+    the interrupt has no id yet; `pending` once the runner has stamped the interrupt and session
+    and delivered it; then exactly one of `answered` or `expired`. Only a `pending` decision can
+    be answered, which is the single gate that makes a second button tap a no-op.
+    """
 
     id: str
     incident_id: str
@@ -437,11 +455,25 @@ class Decision(BaseModel):
     name: str = Field(description="Namespaced interrupt name, e.g. doorstep-urgent-red-flag")
     reason: str
     options: list[DecisionOption]
-    status: Literal["pending", "answered"] = "pending"
+    status: DecisionStatus = "draft"
+    audience: str = Field(default="", description="Roster id of the one person who may answer this")
+    # Set by the runner once the agent has paused; `tool_use_id` is what makes the record
+    # idempotent, because a re-executed tool body sees the same tool use.
+    tool_use_id: str = ""
+    interrupt_id: str | None = None
+    session_id: str | None = None
     responder: str | None = None
     response: str | None = None
+    delivery: list[Delivery] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=utcnow)
+    expires_at: datetime | None = None
     responded_at: datetime | None = None
+
+    def option(self, option_id: str) -> DecisionOption | None:
+        return next((o for o in self.options if o.id == option_id), None)
+
+    def delivered_to(self, recipient: str) -> bool:
+        return any(d.recipient == recipient for d in self.delivery)
 
 
 AuditType = Literal[

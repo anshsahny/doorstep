@@ -17,10 +17,11 @@ from typing import Any
 from strands import tool
 from strands.types.tools import ToolContext
 
+from .decisions import expires_at, upsert_decision
 from .geo import haversine_km
+from .messages import VOLUNTEER_UPDATE, volunteer_task
 from .models import (
     CaseState,
-    Decision,
     DecisionOption,
     ReliefCentre,
     Resident,
@@ -352,41 +353,6 @@ def send_resident_tip(resident_id: str, kind: str, reason: str, tool_context: To
     return f"sent to {r.id}: {text}"
 
 
-def _new_decision(
-    ctx: RunContext, resident_id: str | None, name: str, reason: str, options: list[DecisionOption]
-) -> Decision:
-    n = len(ctx.store.decisions(ctx.incident_id)) + 1
-    decision = Decision(
-        id=f"dec-{n:03d}",
-        incident_id=ctx.incident_id,
-        resident_id=resident_id,
-        name=name,
-        reason=reason,
-        options=options,
-    )
-    ctx.store.save_decision(decision)
-    ctx.audit.record(
-        actor="system:decisions",
-        type="decision",
-        resident_id=resident_id,
-        reason=f"{name}: {reason}",
-        data={"decision_id": decision.id, "options": [o.label for o in options]},
-    )
-    return decision
-
-
-def _volunteer_brief(ctx: RunContext, r: Resident, case: ResidentCase, why: str) -> str:
-    """The minimal-disclosure task text for the assigned volunteer only."""
-    who = r.first_name if r.consent.share_with_volunteer else "the resident"
-    hints = " ".join(r.notes) if r.consent.share_with_volunteer and r.notes else ""
-    result = case.latest_result
-    said = f' They said: "{result.key_quote}".' if result and result.key_quote else ""
-    return (
-        f"Please check on {who} at {r.address_label}. {why}.{said} "
-        f"{hints} Reply here: On my way / They're OK / Need more help."
-    ).replace("  ", " ")
-
-
 @tool(context=True)
 def assign_volunteer(
     resident_id: str, volunteer_id: str, include_brief: bool, reason: str, tool_context: ToolContext
@@ -431,67 +397,78 @@ def assign_volunteer(
             "ESCALATED cases get a visit"
         )
 
-    if case.risk.wave == 1 and case.state != CaseState.ESCALATED:
-        # SPEC §4.2 / §7: high-risk door-knocks need the captain's approval.
-        transition(case, CaseState.ESCALATED, reason=f"door-knock by {v.id} awaiting captain")
-        decision = _new_decision(
-            ctx,
-            r.id,
-            "doorstep-approve-door-knock",
-            f"Approve {v.name.split()[0]} ({distance:.1f} km) knocking on {r.address_label}? "
-            f"{reason}",
-            [
-                DecisionOption(
-                    id="approve",
-                    label=f"Send {v.name.split()[0]} ({distance:.1f} km)",
-                    action="assign_volunteer",
-                    args={
-                        "resident_id": r.id,
-                        "volunteer_id": v.id,
-                        "include_brief": include_brief,
-                        "reason": reason,
-                    },
-                ),
-                DecisionOption(
-                    id="handle",
-                    label="I'm handling it",
-                    action="resolve",
-                    args={"resident_id": r.id, "outcome": "captain handling"},
-                ),
-            ],
-        )
-        ctx.store.save_case(case)
-        if not ctx.auto_approve:
-            return (
-                f"high-risk case: captain approval requested (decision {decision.id}); "
-                "nothing sent yet"
-            )
-        decision.status, decision.responder, decision.response = (
-            "answered",
-            "captain:auto-approve",
-            "approve",
-        )
-        decision.responded_at = ctx.clock.now()
-        ctx.store.save_decision(decision)
-        ctx.audit.record(
-            actor="captain:auto-approve",
-            type="decision",
-            resident_id=r.id,
-            reason=f"{decision.id} approved: {decision.options[0].label}",
-        )
+    # A high-risk door-knock never reaches this line unapproved: `ApprovalHook` interrupts at
+    # admission, so the tool body runs only once the captain has said yes (Spike A).
+    return send_volunteer_task(
+        ctx,
+        r,
+        v,
+        reason,
+        include_brief=include_brief,
+        tool_use_id=str(tool_context.tool_use.get("toolUseId") or ""),
+    )
+
+
+def send_volunteer_task(
+    ctx: RunContext,
+    r: Resident,
+    v: Volunteer,
+    reason: str,
+    *,
+    include_brief: bool,
+    tool_use_id: str,
+) -> str:
+    """Actually send one volunteer one task, and open their reply.
+
+    Lives outside the tool because a captain choosing "Send Tom" on their phone must produce the
+    same effect whether or not the model remembers to call the tool afterwards. A live drill had
+    the captain pick "Send Sam" for two urgent residents and nobody was sent
+    (`decisions._apply_directly` now calls this directly).
+    """
+    case = _case(ctx, r.id)
+    if case.state == CaseState.ASSIGNED and case.assigned_volunteer == v.id:
+        return f"{r.id} is already assigned to {v.id}"  # idempotent: the model got there first
 
     transition(case, CaseState.ASSIGNED, reason=f"volunteer {v.id} assigned: {reason}")
     case.assigned_volunteer = v.id
     ctx.store.save_case(case)
     text = (
-        _volunteer_brief(ctx, r, case, reason)
+        volunteer_task(ctx, r, case, reason, volunteer_name=v.name.split()[0])
         if include_brief
         else f"Please check on the resident at {r.address_label}. {reason}."
     )
     ctx.outbox.append(
         OutboundMessage(kind="volunteer_task", recipient=v.id, text=text, resident_id=r.id)
     )
-    return f"task sent to {v.name.split()[0]} ({distance:.1f} km) for {r.id}"
+    # The task is a task, not a decision (SPEC §4): no agent waits on it. It is recorded in the
+    # same shape so the volunteer's reply gets the same identity check and the same
+    # answered-once guarantee as the captain's, without a second code path to get wrong.
+    task = upsert_decision(
+        ctx,
+        tool_use_id=f"task:{tool_use_id}",
+        resident_id=r.id,
+        name=VOLUNTEER_UPDATE,
+        reason=reason,
+        options=[
+            DecisionOption(
+                id="otw", label="On my way", action="acknowledge", args={"resident_id": r.id}
+            ),
+            DecisionOption(
+                id="ok",
+                label="They're OK",
+                action="resolve",
+                args={"resident_id": r.id, "outcome": "checked by volunteer"},
+            ),
+            DecisionOption(
+                id="more", label="Need more help", action="escalate", args={"resident_id": r.id}
+            ),
+        ],
+        audience=v.id,
+    )
+    task.status = "pending"
+    task.expires_at = expires_at(ctx)
+    ctx.store.save_decision(task)
+    return f"task sent to {v.name.split()[0]} ({_distance_km(r, v):.1f} km) for {r.id}"
 
 
 def _mentions_resident_details(ctx: RunContext, message: str) -> str | None:
@@ -652,18 +629,41 @@ def escalate_to_captain(
     if case.state != CaseState.ESCALATED:
         transition(case, CaseState.ESCALATED, reason=f"escalated to captain: {reason}")
         ctx.store.save_case(case)
-    decision = _new_decision(ctx, r.id, name, reason, canonical)
 
-    result = case.latest_result
-    alone = "lives alone" if r.lives_alone else "does not live alone"
-    quote = f' Said: "{result.key_quote}".' if result and result.key_quote else ""
-    told = " Told them to call 911." if name == "doorstep-urgent-red-flag" else ""
-    text = f"{r.first_name}, {r.age_band}, {alone}: {reason}{quote}{told}"
-    ctx.outbox.append(
-        OutboundMessage(kind="captain_alert", recipient="captain", text=text, resident_id=r.id)
+    # Everything above this line runs twice, because a tool that interrupts re-runs from the top
+    # on resume (Spike A). It is all idempotent: the upsert is keyed on this tool use, and the
+    # transition is skipped once the case is already escalated.
+    decision = upsert_decision(
+        ctx,
+        tool_use_id=str(tool_context.tool_use.get("toolUseId") or ""),
+        resident_id=r.id,
+        name=name,
+        reason=reason,
+        options=canonical,
+        audience=ctx.org.captain_id,
     )
-    labels = " / ".join(o.label for o in canonical)
-    return f"captain paged (decision {decision.id}, {name}); options: {labels}"
+    answer = tool_context.interrupt(name, reason={"decision_id": decision.id})
+
+    # Resumed: the captain has chosen. Report it to the model, which carries out the choice with
+    # the tools it already has — under the captain's role, not the agent's.
+    if not isinstance(answer, dict):
+        return f"captain responded: {answer}"
+    label = answer.get("label", answer.get("option_id", "?"))
+    action = answer.get("action", "note")
+    if action == "resolve":
+        return (
+            f'The captain chose "{label}" for {r.id}. They are handling it themselves. '
+            "Call close_case with outcome 'captain_handling' and do nothing else."
+        )
+    if action == "assign_volunteer":
+        args = answer.get("args") or {}
+        return (
+            f'The captain chose "{label}" for {r.id}. Call assign_volunteer with '
+            f"volunteer_id '{args.get('volunteer_id')}' and include_brief true, then close_case."
+        )
+    if action == "notify_family":
+        return f'The captain chose "{label}" for {r.id}. Call notify_family, then close_case.'
+    return f'The captain chose "{label}" for {r.id}. Record it with close_case.'
 
 
 @tool(context=True)
