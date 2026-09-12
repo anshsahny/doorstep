@@ -8,8 +8,8 @@ Update this file whenever something that costs money is created or torn down.
 | | |
 |---|---|
 | Granted | **$140.00**, expiring **Sep 2027** (expiry is not a constraint) |
-| Estimated remaining | **$135.51** as of 2026-09-12 |
-| Estimated used | **$4.49** |
+| Estimated remaining | **about $134.5** as of 2026-09-12 evening |
+| Estimated used | **about $5.5** (Cost Explorer $5.31 + unposted) |
 | Out-of-pocket so far | **$0.00** — credits cover 100% of usage |
 
 The `doorstep-monthly` budget has no cost-type filters, so it tracks **gross usage before
@@ -20,7 +20,7 @@ actual cost. A budget on **net** cost is the one that would mean real money.
 
 | Provider | Spent so far | Notes |
 |---|---|---|
-| AWS | **$4.49 gross, $0.00 net** | Entirely Bedrock inference from drill runs; nothing is running continuously. Measured from Cost Explorer 2026-09-12 (see the measured rates below), not estimated. Kept: CDK bootstrap (`CDKToolkit`; ~$0/month while empty) and CloudWatch Transaction Search (enabled in Phase 0; no cost until traces flow in Phase 3). No AgentCore runtimes, no EC2. |
+| AWS | **$5.31 gross, $0.00 net** (Cost Explorer, Sep 12; the last drills may not be posted yet) | Entirely Bedrock inference from drill runs; nothing is running continuously. Measured from Cost Explorer 2026-09-12 (see the measured rates below), not estimated. Kept: CDK bootstrap (`CDKToolkit`; ~$0/month while empty) and CloudWatch Transaction Search (enabled in Phase 0; no cost until traces flow in Phase 3). No AgentCore runtimes, no EC2. |
 | Twilio (`doorstep` subaccount) | about $1.18 | one US local number (about $1.15/month) + two 12 s smoke calls (about $0.014 each, billed per minute) |
 | ngrok | $0.00 | free plan |
 
@@ -54,10 +54,36 @@ judging period**, on a live public link, and spend then lands on a real card. A 
 does not bound the total. Before Phase 5 ships, add a **cumulative** sandbox cap (about 300
 drills covers the whole period inside credits) alongside the daily cap and the kill switch.
 
+## Phase 3 stack: standing monthly cost (stack `Doorstep`, us-east-1)
+
+Estimated from list prices, idle (no drills running). AgentCore Runtime bills per second only
+while a session runs; idle and I/O-wait time are not charged.
+
+| Resource | Idle month |
+|---|---|
+| AgentCore Runtime `doorstep_coordinator` (no open sessions; idle timeout 300 s, max 2 h) | $0.00 |
+| DynamoDB `doorstep`, on-demand, a few MB | ~$0.00 |
+| S3 data bucket (`sessions/` expire after 30 days) | ~$0.00 |
+| HTTP API (2 routes), $1 per million requests | ~$0.00 |
+| Alert poller: 4,320 Lambda runs (256 MB arm64, ~1 s) + 4,320 Scheduler invocations | ~$0.02 |
+| SSM: 13 standard parameters (free) + `aws/ssm` KMS decrypts | ~$0.00–0.03 |
+| CloudWatch Logs, 14-day retention | ~$0.01 |
+| ECR: runtime image in the CDK assets repo (~0.7 GB compressed deps layer, stored once) | ~$0.07 |
+| **Total** | **≈ $0.10–0.15 / month** |
+
+Per cloud drill: ≈ $0.38 (the measured $0.37 of Nova tokens + under $0.01 of runtime, DynamoDB
+and spans). Not deployed on purpose: no NAT gateway, EC2, customer-managed KMS key or Secrets
+Manager. `make poller ARGS=off` stops the only recurring invocation; `make destroy` removes the
+rest (SSM parameters stay, and cost nothing).
+
 ## Ledger (newest first)
 
 | Date | Item | Est. | Actual | Status |
 |---|---|---|---|---|
+| 2026-09-12 | Phase 3: three cloud drills (1 auto-approve, 2 Telegram), one cloud restart test, probes | ≈ $1.20 | $0.84 posted so far (usage $5.31 − $4.47) | done |
+| 2026-09-12 | Phase 3: stack `Doorstep` (runtime, 3 Lambdas with X-Ray tracing, HTTP API, schedule, table, bucket) | ≈ $0.10–0.15/month idle | | active |
+| 2026-09-12 | Phase 3: 13 SSM parameters under `/doorstep` (standard tier) | $0 | | active |
+| 2026-09-12 | Phase 3: ECR pushes retried after proxy timeouts; image slimmed (no duplicate venv layer) | cents | | done |
 | 2026-09-12 | Bedrock: Phase 2 spikes (offline, $0) and two live verification drills | $0.75 | included below | done |
 | 2026-09-12 | Bedrock: all drill runs attributed to 2026-09-12 UTC (Phase 1 Friday evening + Saturday Gate 1 re-verification + Phase 2), 12.3M Nova 2 Lite input tokens | — | **$4.47 gross, $0.00 net** | measured |
 | 2026-09-11 | Bedrock: Phase 1 spikes (persona on Nova Micro, Graph, Cedar denial) and about eight local drills on Nova 2 Lite + Nova Micro; no cloud resources created | < $0.40 | posted under 2026-09-12 UTC | done |

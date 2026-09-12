@@ -527,6 +527,35 @@ def notify_family(resident_id: str, reason: str, tool_context: ToolContext) -> s
             "no family consent or no family contact on file",
             resident_id=resident_id,
         )
+    # Carrying out a captain's "Call the family contact" shares its key with the decision's own
+    # deterministic branch, so the family hears once whether the model, the branch, or both act.
+    answered = tool_context.invocation_state.get("answered_decision_id")
+    once = f"decision:{answered}" if answered else f"tool:{tool_context.tool_use.get('toolUseId')}"
+    return send_family_notice(ctx, r, reason, once_key=once, actor=_actor(tool_context))
+
+
+def send_family_notice(
+    ctx: RunContext, r: Resident, reason: str, *, once_key: str, actor: str
+) -> str:
+    """Tell a resident's family contact, once per `once_key`, and only with consent.
+
+    Lives outside the tool for the same reason as `send_volunteer_task`: a captain who taps
+    "Call the family contact" must get that result even when the model never calls the tool.
+    The consent check is repeated here because that path does not pass through Cedar.
+    """
+    if not (r.consent.family and r.family_contact_ref):
+        ctx.audit.record(
+            actor=actor,
+            type="policy",
+            resident_id=r.id,
+            tool="notify_family",
+            policy_decision="deny",
+            reason="no family consent or no family contact on file; nothing was sent",
+            data={"by": "code"},
+        )
+        return f"refused: {r.id} has no family consent or contact on file"
+    if not ctx.store.claim(f"FAMILY#{ctx.incident_id}#{r.id}#{once_key}"):
+        return f"family contact for {r.id} was already notified"
     text = (
         f"Hello, this is the {ctx.org.name} neighbour team. {r.first_name} may need a hand today "
         "because of "

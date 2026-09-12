@@ -17,10 +17,13 @@ jobs:
         with:
           enable-cache: true
       - run: uv python install 3.12
-      - run: uv sync --frozen
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: uv sync --frozen --group infra
       - run: uv run ruff check .
       - run: uv run ruff format --check .
-      - run: uv run pytest -q
+      - run: uv run --group infra pytest -q
 
   gitleaks:
     runs-on: ubuntu-latest

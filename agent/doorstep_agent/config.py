@@ -15,8 +15,19 @@ from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parents[2]
 
-load_dotenv(ROOT / ".env")
-os.environ.setdefault("AWS_PROFILE", "doorstep")
+
+def running_in_aws() -> bool:
+    """True inside Lambda or the AgentCore container, where credentials come from a role.
+
+    There, forcing `AWS_PROFILE` would make boto3 look for a profile that does not exist, and a
+    `.env` must never be the source of anything: deployed secrets come from SSM.
+    """
+    return bool(os.getenv("AWS_LAMBDA_FUNCTION_NAME")) or os.getenv("DOORSTEP_ENV") == "cloud"
+
+
+if not running_in_aws():
+    load_dotenv(ROOT / ".env")
+    os.environ.setdefault("AWS_PROFILE", "doorstep")
 os.environ.setdefault("AWS_REGION", "us-east-1")
 os.environ.setdefault("AWS_DEFAULT_REGION", os.environ["AWS_REGION"])
 
@@ -31,8 +42,12 @@ class Settings:
     model_persona: str
     data_dir: Path
     policies_dir: Path
-    # Where paused agent sessions are persisted locally (Phase 3 moves the bytes to S3).
+    # Where paused agent sessions are persisted locally; `sessions_bucket` moves them to S3.
     sessions_dir: Path
+    sessions_bucket: str = ""
+    # The DynamoDB table and organisation the cloud coordinator works on (empty locally).
+    table_name: str = ""
+    org_id: str = "juniper-court"
     # Which hazard profile this deployment runs, and the replay fixture for drills. This is
     # configuration: the agents, tools, policies and prompts never name a hazard themselves.
     default_profile: str = "heat"
@@ -63,13 +78,16 @@ class Settings:
 def settings() -> Settings:
     """Return the cached settings."""
     return Settings(
-        aws_profile=os.environ["AWS_PROFILE"],
+        aws_profile=os.getenv("AWS_PROFILE", ""),
         aws_region=os.environ["AWS_REGION"],
         model_agent=os.getenv("DOORSTEP_MODEL_AGENT", "us.amazon.nova-2-lite-v1:0"),
         model_persona=os.getenv("DOORSTEP_MODEL_PERSONA", "us.amazon.nova-micro-v1:0"),
         data_dir=ROOT / "data",
         policies_dir=ROOT / "agent" / "policies",
         sessions_dir=Path(os.getenv("DOORSTEP_SESSIONS_DIR", str(ROOT / ".sessions"))),
+        sessions_bucket=os.getenv("DOORSTEP_SESSIONS_BUCKET", ""),
+        table_name=os.getenv("DOORSTEP_TABLE", ""),
+        org_id=os.getenv("DOORSTEP_ORG_ID", "juniper-court"),
         default_profile=os.getenv("DOORSTEP_PROFILE", "heat"),
         default_alert_fixture=Path(
             os.getenv(

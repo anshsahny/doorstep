@@ -257,3 +257,91 @@ def _assign_input(resident_id: str) -> dict[str, object]:
         "include_brief": True,
         "reason": "Needs a ride.",
     }
+
+
+async def _escalate_and_choose_family(ctx: RunContext, model) -> None:
+    from doorstep_agent.agents.dispatcher import _record_pauses
+    from doorstep_agent.decisions import Responder, respond_to_decision
+
+    with_result(ctx, "r05", CheckinStatus.NO_ANSWER)
+    ctx.model_override = model
+    paused = await invoke(ctx, "r05", "handle r05", model=model)
+    decision = _record_pauses(ctx, "r05", paused)[0]
+    assert "notify_family" in [o.id for o in decision.options]
+    outcome = await respond_to_decision(
+        ctx,
+        decision.id,
+        "notify_family",
+        Responder(source="drill", external_id="x"),
+        actor_override="captain:cap-maria",
+    )
+    assert outcome.kind == "applied"
+
+
+def _escalate_r05() -> ToolCall:
+    return ToolCall(
+        "escalate_to_captain",
+        {"resident_id": "r05", "reason": "No answer after three calls.", "options": []},
+        "tu-esc-family",
+    )
+
+
+async def test_calling_the_family_happens_even_if_the_model_forgets(ctx: RunContext) -> None:
+    """Found in the Gate 3 cloud drill: "Call the family contact" had no deterministic branch."""
+    model = run_script(_escalate_r05(), final_text="the captain chose the family")  # no tool call
+    await _escalate_and_choose_family(ctx, model)
+
+    notices = [m for m in ctx.outbox if m.kind == "family_notice"]
+    assert len(notices) == 1 and notices[0].resident_id == "r05"
+
+
+async def test_the_family_hears_once_when_the_model_also_calls_the_tool(ctx: RunContext) -> None:
+    from helpers.scripted_model import ScriptedModel, Turn
+
+    model = ScriptedModel(
+        [
+            Turn(tool_calls=[_escalate_r05()]),
+            Turn(
+                tool_calls=[
+                    ToolCall(
+                        "notify_family",
+                        {"resident_id": "r05", "reason": "Harold did not answer."},
+                        "tu-family",
+                    )
+                ]
+            ),
+        ],
+        final_text="done",
+    )
+    await _escalate_and_choose_family(ctx, model)
+
+    assert model.model_calls >= 2, "the model must actually have called notify_family"
+    assert len([m for m in ctx.outbox if m.kind == "family_notice"]) == 1
+
+
+async def test_the_family_branch_still_needs_consent(ctx: RunContext) -> None:
+    """The decision path skips Cedar, so the consent check is repeated in code."""
+    from doorstep_agent.decisions import redrive_unapplied
+    from doorstep_agent.models import Decision, DecisionOption, utcnow
+
+    with_result(ctx, "r02", CheckinStatus.URGENT)  # r02 has no family consent
+    ctx.store.save_decision(
+        Decision(
+            id="dec-900",
+            incident_id=ctx.incident_id,
+            resident_id="r02",
+            name="doorstep-urgent-red-flag",
+            reason="test",
+            options=[DecisionOption(id="fam", label="Call family", action="notify_family")],
+            status="answered",
+            response="fam",
+            responder="captain:cap-maria",
+            responded_at=utcnow().replace(year=2000),
+        )
+    )
+    redrive_unapplied(ctx)
+
+    assert [m for m in ctx.outbox if m.kind == "family_notice"] == []
+    assert any(
+        e.policy_decision == "deny" and e.tool == "notify_family" for e in ctx.audit.events()
+    )
