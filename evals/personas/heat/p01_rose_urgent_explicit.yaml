@@ -1,0 +1,26 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p01_rose_urgent_explicit
+resident_id: r01
+display_name: Rose Whitaker
+language: en
+behaviour: answers
+traits:
+  age: 81
+  lives_alone: true
+  hearing: "hard of hearing; asks the caller to repeat once or twice"
+  style: "polite, a little proud, short sentences"
+  home: "third-floor apartment, no air conditioning, one small fan, windows shut"
+context: >
+  It is a very hot afternoon. Rose has been feeling dizzy since lunch, her skin feels hot and
+  dry and she has stopped sweating. She could not remember what day it was this morning. She
+  will say so plainly if someone asks how she is feeling.
+goal: >
+  Answer the caller's questions honestly. When asked how she feels, say she is dizzy, very hot
+  and not sweating, and a bit muddled about the day. Accept help if it is offered.
+max_turns: 6
+ground_truth:
+  status: URGENT
+  red_flags: [dizziness_fainting, not_sweating_hot, confusion]
+  needs: [cooling]
+  hidden: false
+fictional: true

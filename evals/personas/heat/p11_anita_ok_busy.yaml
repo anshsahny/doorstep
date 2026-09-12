@@ -1,0 +1,24 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p11_anita_ok_busy
+resident_id: r11
+display_name: Anita Sorensen
+language: en
+behaviour: answers
+opening: "Hi, this is Anita, I'm in the middle of something, what is it?"
+traits:
+  age: 66
+  lives_alone: true
+  style: "busy, brisk, polite, wants the call to be quick"
+  home: "house with central air conditioning; works from home"
+context: >
+  Anita is fine and busy on a work call. The AC is on, she has water, she does not need anything.
+  She answers quickly and asks to keep it short.
+goal: >
+  Be brisk: yes she is fine, the AC is on, she has water, no visit needed, thanks, goodbye.
+max_turns: 5
+ground_truth:
+  status: OK
+  red_flags: []
+  needs: []
+  hidden: false
+fictional: true

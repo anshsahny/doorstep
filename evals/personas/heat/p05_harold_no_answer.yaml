@@ -1,0 +1,21 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p05_harold_no_answer
+resident_id: r05
+display_name: Harold Kimura
+language: en
+behaviour: no_answer
+traits:
+  age: 88
+  lives_alone: true
+context: >
+  Harold never picks up. His phone is off the hook again. He is the highest-risk resident on the
+  list (no AC, lives alone, needs power for a medical device), so three unanswered attempts must
+  end with the captain being asked to approve a door-knock.
+goal: "Never answer."
+max_turns: 1
+ground_truth:
+  status: NO_ANSWER
+  red_flags: []
+  needs: []
+  hidden: false
+fictional: true

@@ -85,7 +85,7 @@ Ansh's global Node must stay on **v20** (Homebrew `node@20`) for his day job.
 - `make setup` — install Python 3.12 via uv, sync all deps, install pre-commit hooks, `npm install` (Node 22)
 - `make test` / `make lint` / `make fmt` / `make check` (lint + tests) / `make node-check`
 - `make smoke-01` … `make smoke-05` — Phase 0 smoke tests (`ARGS=--audio`, `ARGS=--whoami`, `ARGS=teardown`); see `scripts/smoke/README.md`
-- `make local-drill` — run a drill locally with simulated residents (terminal board)
+- `make local-drill ARGS=--auto-approve` — run a drill locally with simulated residents (terminal board; `--transcripts`, `--report PATH`, `--no-board`, `--no-clear`; exit 0 = Gate 1 criteria met, 1 = not met, 2 = profile did not activate on the alert)
 - `make deploy` — CDK deploy + AgentCore deploy
 - `make evals` — run eval suites, write `evals/REPORT.md`
 - `make web` / `make web-deploy`

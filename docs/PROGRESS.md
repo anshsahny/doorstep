@@ -1,11 +1,11 @@
 # Doorstep — progress log
 
-Current phase: **0 — Accounts, smoke tests, scaffold**
-Next gate: **Gate 0**
-Time now vs plan: Phase 0 started Fri Sep 11 about 00:00 PDT (planned Thu evening). Scaffold and
-smoke scripts were done by about 01:00; the human steps and smoke runs resumed about 10:40 and ran
-through the late morning (Bedrock verification cleared about 12:00). The Phase 1 slot (Fri 6 PM) is
-still reachable.
+Current phase: **1 — Domain core + text-mode agents (local)**: built, Gate 1 passed, waiting for
+Ansh to commit on `phase1` and say "go" for Phase 2.
+Next gate: **Gate 2**
+Time now vs plan: Phase 0 ran Fri Sep 11 00:00–12:35 PDT (planned Thu evening). Phase 1 ran Fri
+17:45–21:20 PDT, about 3.5 h of its 5 h box, inside the planned Fri 6 PM–12 AM slot. Phase 2 (Sat
+9 AM) is on schedule.
 
 ## Setup completed before Phase 0
 
@@ -18,7 +18,7 @@ still reachable.
 | Phase | Gate | Status | Verified how | Date |
 |---|---|---|---|---|
 | 0 | 5 smoke tests, private repo + LICENSE + kit committed, gitleaks | ✅ passed | All five smoke scripts exit 0 with results in the table below (05 Telegram, 04 Twilio, 01 Nova 2 Lite, 02 Nova 2 Sonic, 03 AgentCore Runtime). Private repo with MIT LICENSE, `.gitignore` and kit committed on `main`; Phase 0 work on branch `phase0`. gitleaks: the pre-commit hook blocked a commit containing a fake `AKIA…` key (rule `aws-access-token`, commit aborted, HEAD unchanged). | 2026-09-11 |
-| 1 | Unit tests + local 12-resident drill | ☐ | | |
+| 1 | Unit tests + local 12-resident drill | ✅ passed | `make check` green: ruff clean, 158 unit tests. They cover the drill setup, the deterministic graph gates (activation, plan, outreach), the dummy-profile test (questions, weights, red flags, needs and relief kind change with no code change), a hazard-word guard over the whole agent package, every risk factor and wave rule, every state-machine transition plus retries, 12 backstop tests incl. a 300-case property test (never lowers, never drops flags, both disagreement kinds logged), 29 Cedar cases through the real `CedarAuthorization` handler (non-allowlisted call, sandbox real-channel call, broadcast with resident details, agent recording an emergency call, plus quiet hours/Extreme, attempts cap, consent, distance, availability, unknown tool, schema typos), audit hook, tool code checks, personas, violations. `make local-drill ARGS=--auto-approve`: 12/12 cases RESOLVED with the expected classification for every persona, both urgent personas escalated (r01 explicit via `flag_urgent`, r02 hidden via the backstop), Harold escalated after 3 unanswered attempts, 5 decisions, 13 messages recorded, 139 audit events, 0 policy violations (1 attempt denied by Cedar and audited with the deciding facts), 53.6 s wall-clock on the final tree (49.7 s the run before). Report in `evals/drill_report.json`. | 2026-09-11 |
 | 2 | Interrupt resume test + Telegram approval loop | ☐ | | |
 | 3 | Cloud drill via AgentCore + Telegram webhook + traces | ☐ | | |
 | 4a | 3 browser check-ins | ☐ | | |
@@ -38,6 +38,78 @@ still reachable.
 | 5 | Telegram ping + button | ✅ PASS 2026-09-11 | Bot `@doorstep_agent_bot`; captain chat ID from the `--whoami` step. Message with 3 inline buttons sent; the `I'm handling it` callback arrived 7.5 s later via long polling, was answered, and the message was edited. First run timed out at 120 s with no tap; second run passed. |
 
 ## Log (newest first)
+
+### 2026-09-11 about 22:00 PDT — Phase 1 cleanup pass before commit
+- Done: removed everything the drill and tests did not use: the `model_voice`, `profiles_dir` and
+  `personas_dir` settings, `Incident.metrics` / `closed_at`, an unused `PlanProblem` exception, the unused
+  `at` parameter of `transition`, an unread raw-output stash in the graph hook, an unused board parameter,
+  a persona turn counter, a redundant drill helper, the `tools`/`schema_tools` parameters of `build_cedar`
+  (the schema always covers every tool), a dead block in the fixture script and a `sys.path` hack in the
+  drill script. Simplified the two-branch transition in `assign_volunteer` and the wave-jump branch of
+  `validate_call_plan`. Added `tests/test_graph_gates.py` (5 deterministic tests, no model calls).
+- Fixed after Ansh tried it: a profile without `eval_personas` (the dummy profile) made the runner glob the
+  repo root for personas and choke on `.pre-commit-config.yaml`. The runner now assesses such a profile on
+  the roster's drill subset, prints the incident status and the assessor's rationale, and simulates
+  nothing; `load_personas` rejects a missing directory. `tests/test_drill_setup.py` covers both setups.
+- Verified how: `make check` green (ruff clean, 158 tests); `make local-drill ARGS=--auto-approve` exit 0
+  on the trimmed tree: 12/12 RESOLVED with expected results, r01 and r02 escalated, 0 violations, 49.6 s.
+  `DOORSTEP_PROFILE=tests/fixtures/profiles/dummy.yaml` + the drill script prints
+  "Incident not_activated for profile 'dummy'" with the assessor's rationale and `RESULT: NOT ACTIVATED`
+  (exit 2: nothing to gate, by design).
+
+### 2026-09-11 about 21:20 PDT — Phase 1 built; Gate 1 passed
+- Done (all local, no cloud, no Twilio, no Telegram):
+  - Data: `data/org.json`, 48-resident `roster.json` from `scripts/gen_roster.py` (seeded; the first 12 are
+    hand-authored and match the personas), `volunteers.json` (chat IDs as env references only), five real SE
+    Portland relief centres labelled "sample - verify", and the real June 2021 PQR Excessive Heat Warning text
+    fetched from the IEM VTEC archive by `scripts/fetch_alert_fixture.py` (source URL recorded in the file).
+  - Hazard profiles: `agent/doorstep_agent/profiles/heat.yaml` merged over `_shared.yaml` by `profiles/loader.py`.
+    Alert events, risk weights, questions, red-flag phrases (EN/ES), needs, relief-centre kind, tips and the
+    intro/closing lines all come from the profile. `tests/fixtures/profiles/dummy.yaml` proves it.
+  - Models, in-memory store, deterministic risk scoring with call-plan validation (up one wave with a reason,
+    never down), the case state machine with retries and the drill clock (10 min -> 20 s).
+  - Agents on Nova 2 Lite: alert_assessor and triage as Strands Graph nodes with structured output plus a
+    deterministic outreach node; checkin_text with the same tools as voice (`record_answer`, `flag_urgent`,
+    `end_call`); classifier with the phrase backstop; dispatcher with 13 tools behind `CedarAuthorization`.
+    Personas on Nova Micro through the Strands Evals `ActorSimulator` with a phone-call template.
+  - Policies: six `.cedar` files, a context enricher for the SPEC §8 session values, a Cedar schema generated
+    from the tool specs (validated at startup), an audit hook on every tool call and denial, a post-hoc
+    violation checker, and a model-call guard that stops runaway invocations.
+  - `make local-drill`: async runner (6 check-ins at once), live terminal board, pending decisions with
+    `--auto-approve`, JSON report, exit code = Gate 1 criteria.
+- Verified how: `make check` (ruff + 149 tests) green; `make local-drill ARGS="--auto-approve --transcripts
+  --report evals/drill_report.json"` exit 0, run twice on the finished tree (49.7 s and 53.6 s). Board and
+  report: 12/12 RESOLVED, every result equal to the persona's hidden ground truth, r01 and r02 escalated,
+  0 violations, 1 audited Cedar denial (dispatcher tried `assign_volunteer` for r05 without a valid
+  volunteer). One polish item for Phase 6: after the red-flag line Nova sometimes ends the call with an
+  awkward "I can't continue this conversation" sentence. Spikes B/C/D all passed
+  (ActorSimulator on Nova Micro 1.5 s/turn; Graph 3.6 s; Cedar denial visible in `AfterToolCallEvent`).
+- Found and fixed while running the drill (each now covered by a test or a guard):
+  1. Nova 2 Lite returns list fields as strings and text fields as lists in structured output; Strands re-asks
+     the model on every validation failure with no cap, which looked like a hang (40 retries on `notes`).
+     Fix: `before` validators coerce those shapes; `ModelCallGuard` cancels an invocation after N model calls.
+  2. The dispatcher's Cedar schema was generated from its own tool subset, so policies naming read-only tools
+     failed validation ("unrecognized action"). Fix: the schema is always generated from `ALL_TOOLS`.
+  3. "Violations" were counted as every denial. Now denials (attempts refused, audited with the deciding
+     facts) and violations (forbidden actions that actually happened, checked against the outbox and audit)
+     are separate; Gate 1 needs zero violations.
+- Not done / deferred: the SPEC §12 evals (Phase 6); interrupts and Telegram (Phase 2). Under `--auto-approve`
+  the simulated captain takes the first option of every decision; without it, escalated cases stay ESCALATED
+  (counted as settled) with the decisions listed on the board.
+- Next: Ansh commits Phase 1 on `phase1` and says "go" for Phase 2 (interrupts, persistence, Telegram).
+
+### 2026-09-11 about 17:40 PDT — Phase 1 prep (baseline fixed, plan proposed, Cedar spike)
+- Done: `.env.example` restored with every secret, phone number and chat ID blank (Ansh had deleted it to keep a
+  single env file; the two scaffold tests read it). Phase 1 plan proposed to Ansh (tasks, files, spikes, models,
+  Gate 1 tests, SPEC issues); waiting for "go". No product code written.
+- Verified how: `make test` 5 passed, `make lint` clean, `gitleaks detect --no-git --source .env.example` no leaks.
+- Spike A (Cedar, local, no cost): `CedarAuthorization` with the documented `tools=` auto-schema denies every call
+  with "failed to parse schema from request" as soon as `context_enricher` adds fields such as `mode` or `role`,
+  because the generated `SessionContext` only declares `hour_utc` and `call_count`. Without a schema the enricher
+  works but only action-name typos are caught. With our own schema that declares every session field and every tool
+  input, evaluation is correct (allow, deny, `forbid` beats `permit`, quiet hours with the Extreme override) and
+  startup validation catches action typos, context-attribute typos and type errors.
+- Next: Ansh says "go" → Task 0 (spikes B/C/D against Bedrock, about two cents) → Phase 1 build per the plan.
 
 ### 2026-09-11 about 12:35 PDT — Phase 0 (smoke 03 passed; Gate 0)
 - Done: smoke 03 deployed the hello agent to AgentCore Runtime with the npm CLI and proved session continuity.
@@ -158,6 +230,13 @@ still reachable.
 | 2026-09-11 | Python 3.12 managed by uv (`.python-version`) | The `bidi` extra needs ≥ 3.12; the system Python is 3.14 | system Python 3.14 |
 | 2026-09-11 | Smoke 04 hangs up by closing the WebSocket after ~3 s of audio, with a 60 s call time limit and a REST hang-up as backup | Bounded cost and no runaway call if the script dies | let the callee hang up |
 | 2026-09-11 | Smoke 02 drives Nova 2 Sonic with synthesized speech over a continuously streamed audio channel (silence between turns); cross-modal text is a `--text` option | Sonic only answers inside an active voice session (audio content block open); speech-to-speech is what the phone path needs | text-only session (never answers); headset-only manual test |
+| 2026-09-11 | Phase 1 Cedar: generate our own `.cedarschema` from the Strands tool specs plus the enricher's declared session fields, and pass it as `schema=` | The SDK's `tools=` auto-schema fails at runtime once the enricher adds fields (spike A); our schema keeps full validation at startup | no schema (only action typos caught); the SDK auto-schema (unusable with an enricher) |
+| 2026-09-11 | Shared hazard parts live in `profiles/_shared.yaml` and are merged under each profile; a profile may opt out with `include_shared: false` | Shared red-flag categories and needs are data too, so the dummy-profile test can prove nothing is hard-coded | duplicate the shared parts in every profile |
+| 2026-09-11 | Structured-output models carry `before` validators that coerce the shapes Nova emits, and every agent has a `ModelCallGuard` | Strands retries structured output without a cap; the drill wedged on a string-vs-list field | prompt-only fixes (fragile); a Strands retry cap (none exists in 1.55) |
+| 2026-09-11 | Denials and violations are different counters: denials = attempts refused (Cedar or code check), violations = forbidden actions that executed, found by `violations.find_violations` | Gate 1 and the red-team eval say "every attempt must be denied"; a denial is the policy working | count every denial as a violation (fails the gate whenever the model tries something and is stopped) |
+| 2026-09-11 | Residents are simulated with the Strands Evals `ActorSimulator` on `us.amazon.nova-micro-v1:0`, a phone-call prompt template and a `message`/`stop` reply model | It is the SDK's user-simulation primitive and Micro answers in about 1.5 s | a hand-rolled persona Agent; Nova 2 Lite personas |
+| 2026-09-11 | Phase 1 treats ESCALATED as a settled state and `--auto-approve` plays the captain by taking the first option | Real decisions arrive with Strands interrupts in Phase 2; the drill must finish without a human | block the drill on a terminal prompt |
+| 2026-09-11 | The active profile and the replay fixture are configuration (`DOORSTEP_PROFILE`, `DOORSTEP_ALERT_FIXTURE` in `config.py`); a test forbids hazard words anywhere else in the agent package | Makes "nothing hazard-specific is hard-coded" checkable | a default in the drill runner (caught by the guard) |
 
 ## Disclosures (goes into the README)
 
@@ -168,12 +247,18 @@ still reachable.
     by `run.sh`; our own `main.py` replaces its template entrypoint.
   - Smoke scripts follow the usage patterns shown in the Strands docs (https://strandsagents.com/docs/) and the Twilio
     Media Streams docs (https://www.twilio.com/docs/voice/media-streams); no sample code was copied.
+- Data sources: `data/alerts/2021-06-pqr-excessive-heat-warning.json` is the real, public-domain NWS Portland
+  Excessive Heat Warning of June 2021, fetched from the Iowa Environmental Mesonet VTEC archive
+  (https://mesonet.agron.iastate.edu/vtec/?year=2021&wfo=KPQR&phenomena=EH&significance=W&eventid=0001) by
+  `scripts/fetch_alert_fixture.py`. Relief centres are real public places listed from public information,
+  labelled "sample - verify". Everything else in `data/` and `evals/personas/` is invented.
 - Pre-existing code: none.
 
 ## Human to-do (Ansh)
 
-- [ ] Phase 0: Telegram bot + chat ID in `.env`; Twilio subaccount + number + `.env`; say when Bedrock verification clears; approve the AgentCore deploy
+- [x] Phase 0: Telegram bot + chat ID in `.env`; Twilio subaccount + number + `.env`; say when Bedrock verification clears; approve the AgentCore deploy
 - [ ] After Phase 0: rotate the Telegram bot token in BotFather (it was pasted into a tracked file once) and update `.env` only
+- [ ] Phase 1: review and commit the working tree on `phase1` (one commit), then say "go" for Phase 2
 - [ ] Blog post 1 (Sat AM) · [ ] Blog post 2 (Sun PM) · [ ] Blog post 3 (Mon AM)
 - [ ] Volunteer Telegram account ready
 - [ ] Devpost draft created Saturday

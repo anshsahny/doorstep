@@ -1,0 +1,114 @@
+# Hazard profile: extreme heat (SPEC §3a). Everything heat-specific lives here.
+# Risk weights are grounded in the BC Coroners Service findings on the 2021 heat dome (SPEC §1, §6.2).
+
+id: heat
+display_name: "Extreme heat"
+include_shared: true
+
+alert_events:
+  - event: "Extreme Heat Warning"
+    vtec: "XH.W"
+    activation: auto
+    note: "Name in use since March 2025"
+  - event: "Extreme Heat Watch"
+    vtec: "XH.A"
+    activation: ask
+  - event: "Excessive Heat Warning"
+    vtec: "EH.W"
+    activation: auto
+    note: "Pre-2025 name; the June 2021 replay uses this"
+  - event: "Excessive Heat Watch"
+    vtec: "EH.A"
+    activation: ask
+  - event: "Heat Advisory"
+    vtec: "HT.Y"
+    activation: ask
+
+risk_factors:
+  - id: age_80_plus
+    label: "Age 80+"
+    field: age_band
+    equals: "80+"
+    points: 3
+  - id: age_70s
+    label: "Age 70-79"
+    field: age_band
+    equals: "70-79"
+    points: 2
+  - id: lives_alone
+    label: "Lives alone"
+    field: lives_alone
+    equals: true
+    points: 3
+  - id: no_ac
+    label: "No air conditioning"
+    field: has_ac
+    equals: false
+    points: 3
+  - id: power_dependent
+    label: "Needs power for a medical device"
+    field: power_dependent
+    equals: true
+    points: 3
+  - id: mobility_limited
+    label: "Limited mobility"
+    field: mobility_limited
+    equals: true
+    points: 2
+  - id: chronic_flag
+    label: "Chronic-condition flag"
+    field: chronic_flag
+    equals: true
+    points: 1
+  - id: prior_no_answer
+    label: "No answer in a prior incident"
+    field: prior_no_answer
+    equals: true
+    points: 1
+
+wave_thresholds:
+  wave1_min: 8
+  wave2_min: 5
+
+# Steps 3-5 of the protocol (SPEC §9). `maps_to_needs` tells the classifier which needs a
+# negative answer usually implies.
+checkin_questions:
+  - id: indoor_conditions
+    en: "Is it cool where you are? Do you have air conditioning or a fan that's working?"
+    es: "¿Está fresco donde está? ¿Tiene aire acondicionado o un ventilador que funcione?"
+    maps_to_needs: ["cooling"]
+  - id: supplies
+    en: "Do you have water and anything you need, like your medicines?"
+    es: "¿Tiene agua y todo lo que necesita, como sus medicinas?"
+    maps_to_needs: ["water", "medication_access", "food"]
+  - id: help_offer
+    en: "Would a visit from a neighbour or a ride to a cooling centre help today?"
+    es: "¿Le ayudaría hoy una visita de un vecino o que le lleven a un centro de enfriamiento?"
+    maps_to_needs: ["company", "ride"]
+
+red_flags:
+  - category: not_sweating_hot
+    label: "Feels very hot and has stopped sweating"
+    en: ["not sweating", "stopped sweating", "hot and dry", "skin is hot", "burning up", "so hot i can't"]
+    es: ["no sudo", "dejé de sudar", "no estoy sudando", "piel caliente", "me estoy quemando"]
+  - category: heat_indoors_extreme
+    label: "Extreme heat indoors"
+    en: ["over 100 in here", "100 degrees inside", "like an oven", "hotter inside than out", "over a hundred in here", "can't cool down"]
+    es: ["es un horno", "más de cien adentro", "más de 100 adentro", "no me puedo refrescar"]
+
+needs:
+  - id: cooling
+    label: "A cooler place or a working fan / AC"
+
+relief_centre_kind: cooling
+
+script:
+  hazard_phrase_en: "a heat warning"
+  hazard_phrase_es: "una alerta de calor extremo"
+  hazard_short_en: "the heat"
+  hazard_short_es: "el calor"
+  tip_en: "Keep drinking water, stay in the coolest room, and a cool shower helps."
+  tip_es: "Siga tomando agua, quédese en el cuarto más fresco, y una ducha fresca ayuda."
+
+recheck_minutes: 240
+eval_personas: "evals/personas/heat"

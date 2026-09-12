@@ -1,0 +1,26 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p04_dolores_needs_ride
+resident_id: r04
+display_name: Dolores Fenn
+language: en
+behaviour: answers
+traits:
+  age: 73
+  lives_alone: true
+  mobility: "uses a cane, cannot walk far"
+  style: "practical, direct"
+  home: "ground-floor apartment, no air conditioning, the fan barely helps"
+context: >
+  Dolores is not ill, just uncomfortable: it is very hot in her apartment and the fan is not
+  enough. She has water and her medicines. She would gladly go to a cooling centre but cannot
+  get there on her own and would like a ride.
+goal: >
+  Say she feels alright but it is too hot in the apartment. Say she has water. When asked about a
+  visit or a ride, say yes, a ride to a cooling centre would really help.
+max_turns: 6
+ground_truth:
+  status: NEEDS_HELP
+  red_flags: []
+  needs: [ride, cooling]
+  hidden: false
+fictional: true

@@ -1,0 +1,56 @@
+{
+  "_note": "SAMPLE relief centres: real public places in SE Portland, Oregon, listed from public information. Coordinates are approximate and hours are examples. Verify with 211 / Multnomah County before any real use. The 'kind' tags say what the place could serve as; they are not a statement that it is open as such on any given day.",
+  "verification_notice": "sample - verify with 211 / county before real use",
+  "centres": [
+    {
+      "id": "rc-mt-scott",
+      "name": "Mt. Scott Community Center",
+      "kind": ["cooling", "warming"],
+      "address": "5530 SE 72nd Ave, Portland, OR 97206",
+      "lat": 45.4835,
+      "lng": -122.5885,
+      "hours_sample": "Mon-Fri 6 AM-9 PM, Sat-Sun 8 AM-6 PM",
+      "notes": "Portland Parks & Recreation centre with an indoor pool."
+    },
+    {
+      "id": "rc-holgate",
+      "name": "Holgate Library",
+      "kind": ["cooling", "warming"],
+      "address": "7905 SE Holgate Blvd, Portland, OR 97206",
+      "lat": 45.4900,
+      "lng": -122.5810,
+      "hours_sample": "Mon-Sat 10 AM-6 PM, Sun 12-5 PM",
+      "notes": "Multnomah County Library branch."
+    },
+    {
+      "id": "rc-woodstock",
+      "name": "Woodstock Library",
+      "kind": ["cooling", "warming"],
+      "address": "6008 SE 49th Ave, Portland, OR 97206",
+      "lat": 45.4790,
+      "lng": -122.6115,
+      "hours_sample": "Mon-Sat 10 AM-6 PM, Sun 12-5 PM",
+      "notes": "Multnomah County Library branch."
+    },
+    {
+      "id": "rc-belmont",
+      "name": "Belmont Library",
+      "kind": ["cooling", "warming"],
+      "address": "1038 SE Cesar E. Chavez Blvd, Portland, OR 97214",
+      "lat": 45.5165,
+      "lng": -122.6235,
+      "hours_sample": "Mon-Sat 10 AM-6 PM, Sun 12-5 PM",
+      "notes": "Multnomah County Library branch."
+    },
+    {
+      "id": "rc-midland",
+      "name": "Midland Library",
+      "kind": ["cooling", "warming"],
+      "address": "805 SE 122nd Ave, Portland, OR 97233",
+      "lat": 45.5165,
+      "lng": -122.5375,
+      "hours_sample": "Mon-Sat 10 AM-8 PM, Sun 12-5 PM",
+      "notes": "Multnomah County Library branch; larger building."
+    }
+  ]
+}

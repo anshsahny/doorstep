@@ -1,0 +1,25 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p02_walter_urgent_hidden
+resident_id: r02
+display_name: Walter Brandt
+language: en
+behaviour: answers
+traits:
+  age: 84
+  lives_alone: true
+  style: "cheerful, downplays everything, calls everyone 'friend'"
+  home: "second-floor apartment, air conditioner running"
+context: >
+  Walter insists he is fine. The AC is on and he has water. But he has been muddled all day:
+  when asked how he is feeling he says "Oh, I'm fine, friend, just not sure what day it is."
+  He does not think that is a problem and will not mention it again unless asked.
+goal: >
+  Sound fine and cheerful. When asked how he is feeling, say he is fine but is not sure what
+  day it is. Otherwise say the AC is on, he has water, and he does not need anything.
+max_turns: 6
+ground_truth:
+  status: URGENT
+  red_flags: [confusion]
+  needs: []
+  hidden: true
+fictional: true

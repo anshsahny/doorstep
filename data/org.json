@@ -1,0 +1,23 @@
+{
+  "_note": "FICTIONAL organisation for the Doorstep demo. The neighbourhood, team and residents do not exist. The city and county are real so that public relief centres and NWS zones can be looked up.",
+  "fictional": true,
+  "id": "juniper-court",
+  "name": "Juniper Court",
+  "description": "The Juniper Court Neighbour Team: a volunteer block team in SE Portland, Oregon, covering one senior apartment building (Juniper Court) plus the surrounding blocks.",
+  "location": { "lat": 45.4855, "lng": -122.5945 },
+  "timezone": "America/Los_Angeles",
+  "nws": {
+    "zone": "ORZ006",
+    "zone_name": "Greater Portland Metro Area",
+    "county": "Multnomah",
+    "state": "OR",
+    "office": "PQR"
+  },
+  "captain_id": "cap-maria",
+  "phone_tree_baseline": {
+    "residents": 48,
+    "minutes_per_call": 4,
+    "volunteers_calling": 1,
+    "note": "48 residents x 4 min / 1 volunteer = 192 min = 3.2 hours"
+  }
+}
