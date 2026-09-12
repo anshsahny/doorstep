@@ -59,6 +59,13 @@ Ansh's global Node must stay on **v20** (Homebrew `node@20`) for his day job.
 - JS tools (`aws-cdk`, `@aws/agentcore`, Vite, etc.) are project devDependencies run via `npx` or npm scripts.
 - If a command reports Node v20, stop and fix the PATH before continuing.
 
+## Telegram bot mode (remind Ansh)
+
+The bot is in **webhook mode** (set 2026-09-12): taps go to the deployed `/telegram/webhook`. Leave it there. Cloud drills and Phase 4's mid-call captain alerts need it.
+- Before suggesting or running `make telegram-drill` (local long polling), tell Ansh to run `make telegram-webhook ARGS=delete` first, and `make telegram-webhook ARGS=set` afterwards, before any cloud drill or deployed Telegram test.
+- Before any cloud test that expects a tap (`make cloud-drill ARGS=--telegram`, Gate 4b), check `make telegram-webhook ARGS=info` shows the API host; if it shows `(none)`, tell Ansh to run `ARGS=set`.
+- `make local-drill` never uses Telegram, so it needs no change.
+
 ## Non-negotiable rules
 
 **Secrets and accounts**
@@ -86,7 +93,12 @@ Ansh's global Node must stay on **v20** (Homebrew `node@20`) for his day job.
 - `make test` / `make lint` / `make fmt` / `make check` (lint + tests) / `make node-check`
 - `make smoke-01` … `make smoke-05` — Phase 0 smoke tests (`ARGS=--audio`, `ARGS=--whoami`, `ARGS=teardown`); see `scripts/smoke/README.md`
 - `make local-drill ARGS=--auto-approve` — run a drill locally with simulated residents (terminal board; `--transcripts`, `--report PATH`, `--no-board`, `--no-clear`; exit 0 = Gate 1 criteria met, 1 = not met, 2 = profile did not activate on the alert)
-- `make deploy` — CDK deploy + AgentCore deploy
+- `make secrets-push` — copy `.env` secrets into SSM SecureStrings (`ARGS=--generate-missing` fills an empty passcode/HMAC in `.env`); prints names only
+- `make deploy` — one CDK (Python) stack: AgentCore Runtime coordinator image, Lambdas, HTTP API, schedule, DynamoDB, S3; then `make seed`. `make destroy` tears it down (SSM kept)
+- `make telegram-webhook ARGS=set|delete|info` — point the bot at the deployed webhook or back to long polling (`make telegram-drill` needs `delete`)
+- `make cloud-restart-test` — Gate 3: pause in one runtime process, tap via the real webhook, resume in another (`ARGS="--delay 600"`)
+- `make cloud-drill ARGS=--auto-approve|--telegram` — 12-resident drill in AWS through `POST /admin/replay`
+- `make scan-logs` — search recent runtime/Lambda logs and spans for any SSM secret value (in memory) · `make poller ARGS=on|off`
 - `make evals` — run eval suites, write `evals/REPORT.md`
 - `make web` / `make web-deploy`
 

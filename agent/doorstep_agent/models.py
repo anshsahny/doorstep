@@ -419,6 +419,11 @@ class Incident(BaseModel):
     assessment: AlertAssessment | None = None
     call_plan: CallPlan | None = None
     started_at: datetime = Field(default_factory=utcnow)
+    # Which residents this incident covers (a drill uses a subset), and how it was asked to run
+    # (compression, auto-approve, a real channel, decision TTL). Stored so that any later process
+    # can rebuild the same RunContext from the record alone.
+    resident_ids: list[str] = Field(default_factory=list)
+    run_options: dict[str, Any] = Field(default_factory=dict)
 
 
 class DecisionOption(BaseModel):
@@ -468,12 +473,24 @@ class Decision(BaseModel):
     created_at: datetime = Field(default_factory=utcnow)
     expires_at: datetime | None = None
     responded_at: datetime | None = None
+    # Set once the choice has been carried out. An answered decision without it was claimed by a
+    # process that stopped before acting, and is carried out again (idempotently) by the next one.
+    applied_at: datetime | None = None
 
     def option(self, option_id: str) -> DecisionOption | None:
         return next((o for o in self.options if o.id == option_id), None)
 
     def delivered_to(self, recipient: str) -> bool:
         return any(d.recipient == recipient for d in self.delivery)
+
+
+class OutboundMessage(BaseModel):
+    """Something Doorstep would say or send. In a drill it is recorded, never delivered."""
+
+    kind: str  # resident_tip | volunteer_task | captain_alert | family_notice | group_broadcast
+    recipient: str  # resident id, volunteer id, "captain", "family:<ref>", "volunteers"
+    text: str
+    resident_id: str | None = None
 
 
 AuditType = Literal[

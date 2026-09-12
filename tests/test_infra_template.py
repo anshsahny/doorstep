@@ -1,0 +1,161 @@
+"""Least privilege and no secrets, checked on the synthesized CloudFormation template.
+
+Needs aws-cdk-lib (the `infra` group) and Node for jsii; skipped where they are missing.
+"""
+
+from __future__ import annotations
+
+import json
+import shutil
+from pathlib import Path
+
+import pytest
+
+cdk = pytest.importorskip("aws_cdk")
+if shutil.which("node") is None:  # pragma: no cover
+    pytest.skip("jsii needs node", allow_module_level=True)
+
+from aws_cdk.assertions import Template  # noqa: E402
+from dotenv import dotenv_values  # noqa: E402
+
+from infra.doorstep_stack import DoorstepStack  # noqa: E402
+from infra.stage import INCLUDE, stage_runtime  # noqa: E402
+
+ROOT = Path(__file__).resolve().parents[1]
+# Only these actions may use Resource "*": AWS documents no resource ARN for them.
+NO_RESOURCE_ACTIONS = {
+    "ecr:GetAuthorizationToken",
+    "xray:PutTraceSegments",
+    "xray:PutTelemetryRecords",
+    "xray:GetSamplingRules",
+    "xray:GetSamplingTargets",
+    "cloudwatch:PutMetricData",
+}
+ALLOWED_ENV = {
+    "DOORSTEP_TABLE",
+    "DOORSTEP_SESSIONS_BUCKET",
+    "DOORSTEP_ORG_ID",
+    "DOORSTEP_SSM_PREFIX",
+    "DOORSTEP_MODEL_AGENT",
+    "DOORSTEP_MODEL_PERSONA",
+    "DOORSTEP_RUNTIME_ARN",
+    "ORG_LAT",
+    "ORG_LNG",
+}
+
+
+@pytest.fixture(scope="module")
+def template(tmp_path_factory: pytest.TempPathFactory) -> dict:
+    runtime = stage_runtime(tmp_path_factory.mktemp("runtime"))
+    bundle = tmp_path_factory.mktemp("lambda")
+    (bundle / "doorstep_api").mkdir()
+    app = cdk.App()
+    stack = DoorstepStack(
+        app,
+        "Doorstep",
+        runtime_context=runtime,
+        lambda_bundle=bundle,
+        env=cdk.Environment(account="123456789012", region="us-east-1"),
+    )
+    return Template.from_stack(stack).to_json()
+
+
+def resources(template: dict, kind: str) -> dict[str, dict]:
+    return {k: v for k, v in template["Resources"].items() if v["Type"] == kind}
+
+
+def statements(template: dict):
+    for lid, r in resources(template, "AWS::IAM::Policy").items():
+        for st in r["Properties"]["PolicyDocument"]["Statement"]:
+            yield lid, st
+
+
+def as_list(value) -> list:
+    return value if isinstance(value, list) else [value]
+
+
+def test_no_action_wildcards_and_star_resources_only_where_aws_allows_nothing_else(
+    template,
+) -> None:
+    for lid, st in statements(template):
+        for action in as_list(st["Action"]):
+            assert "*" not in action, f"{lid}: wildcard action {action}"
+        if "*" in as_list(st["Resource"]):
+            assert set(as_list(st["Action"])) <= NO_RESOURCE_ACTIONS, f"{lid}: {st}"
+
+
+def test_our_roles_use_no_managed_policies(template) -> None:
+    for lid, role in resources(template, "AWS::IAM::Role").items():
+        if lid.startswith("CustomS3AutoDeleteObjects"):
+            continue  # CDK's own provider, runs only when the stack is deleted
+        assert not role["Properties"].get("ManagedPolicyArns"), lid
+
+
+def test_the_webhook_can_only_touch_telegram_update_claims(template) -> None:
+    webhook = [st for lid, st in statements(template) if lid.startswith("telegramwebhookRole")]
+    dynamo = [st for st in webhook if any(a.startswith("dynamodb:") for a in as_list(st["Action"]))]
+    assert dynamo and all(
+        as_list(st["Condition"]["ForAllValues:StringLike"]["dynamodb:LeadingKeys"])
+        == ["CLAIM#TGU#*"]
+        for st in dynamo
+    )
+    ssm = [st for st in webhook if "ssm:GetParameter" in as_list(st["Action"])]
+    text = json.dumps(ssm)
+    assert "webhook_secret" in text and "bot_token" not in text
+
+
+def test_the_runtime_role_names_its_models_table_prefix_and_parameters(template) -> None:
+    runtime = [st for lid, st in statements(template) if lid.startswith("RuntimePolicy")]
+    text = json.dumps(runtime)
+    assert "foundation-model/*" not in text
+    assert "amazon.nova-2-lite-v1:0" in text and "amazon.nova-micro-v1:0" in text
+    assert "sessions/*" in text
+    assert "GetWorkloadAccessToken" not in text
+
+
+def test_environment_variables_are_names_not_secrets(template) -> None:
+    envs = [
+        r["Properties"].get("Environment", {}).get("Variables", {})
+        for r in resources(template, "AWS::Lambda::Function").values()
+    ] + [
+        r["Properties"].get("EnvironmentVariables", {})
+        for r in resources(template, "AWS::BedrockAgentCore::Runtime").values()
+    ]
+    names = {k for env in envs for k in env}
+    assert names <= ALLOWED_ENV, names - ALLOWED_ENV
+
+
+def test_no_local_secret_value_appears_in_the_template(template) -> None:
+    text = json.dumps(template)
+    local = dotenv_values(ROOT / ".env") if (ROOT / ".env").exists() else {}
+    for key, value in local.items():
+        if value and len(value) >= 6 and not key.startswith(("AWS_", "DOORSTEP_MODEL")):
+            assert value not in text, f"the value of {key} is in the template"
+
+
+def test_bucket_is_private_and_tls_only(template) -> None:
+    bucket = next(iter(resources(template, "AWS::S3::Bucket").values()))["Properties"]
+    assert all(bucket["PublicAccessBlockConfiguration"].values())
+    policy = json.dumps(resources(template, "AWS::S3::BucketPolicy"))
+    assert "aws:SecureTransport" in policy
+
+
+def test_lambdas_are_traced_so_runtime_spans_are_sampled(template) -> None:
+    for fn in resources(template, "AWS::Lambda::Function").values():
+        if "doorstep_api" in fn["Properties"].get("Handler", ""):
+            assert fn["Properties"]["TracingConfig"]["Mode"] == "Active"
+
+
+def test_logs_expire_and_the_api_is_throttled(template) -> None:
+    for group in resources(template, "AWS::Logs::LogGroup").values():
+        assert group["Properties"]["RetentionInDays"] == 14
+    stage = next(iter(resources(template, "AWS::ApiGatewayV2::Stage").values()))["Properties"]
+    assert stage["DefaultRouteSettings"]["ThrottlingRateLimit"] == 5
+    assert stage["RouteSettings"]["POST /admin/replay"]["ThrottlingRateLimit"] == 1
+
+
+def test_the_runtime_build_context_is_an_allowlist(tmp_path: Path) -> None:
+    staged = stage_runtime(tmp_path / "ctx")
+    assert not any(".env" in p.name for p in staged.rglob("*"))
+    assert not any(part.startswith(".env") for part in INCLUDE)
+    assert not (staged / ".sessions").exists() and not (staged / "node_modules").exists()

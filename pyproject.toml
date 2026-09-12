@@ -32,6 +32,15 @@ dev = [
     "pre-commit>=4.6",
     # Strands Evals (Phase 6 eval suites)
     "strands-agents-evals>=1.2,<2",
+    "moto[dynamodb,s3,server]>=5.2",
+]
+infra = [
+    "aws-cdk-lib==2.269.0",
+    "constructs>=10.4,<11",
+]
+runtime = [
+    "aws-opentelemetry-distro>=0.18",
+    "strands-agents-evals>=1.2,<2",
 ]
 # Local microphone/speaker for voice tests. Needs the PortAudio system library (brew install portaudio).
 voice-local = [
@@ -60,8 +69,9 @@ extend-exclude = [
 select = ["E", "F", "I", "B", "UP", "W"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["doorstep_agent", "_common", "conftest", "helpers"]
+known-first-party = ["doorstep_agent", "doorstep_api", "_common", "conftest", "helpers", "infra"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["api", "."]
 asyncio_mode = "auto"

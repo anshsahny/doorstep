@@ -1,12 +1,24 @@
-"""Repository interface with an in-memory backend (PLAN Phase 1). DynamoDB arrives in Phase 3.
+"""Repository interface with an in-memory backend (PLAN Phase 1) and the contract DynamoDB meets.
 
 Static org data (org profile, roster, volunteers, relief centres) is loaded from `data/`.
-Incident data (incidents, cases, decisions, audit events) lives in memory for local drills.
+Incident data (incidents, cases, decisions, audit events) lives in memory for local drills;
+`store_dynamo.DynamoStore` keeps the same data in DynamoDB (Phase 3).
+
+Two properties every backend must have, because Doorstep's code relies on them:
+
+* **Shared records within a process.** `case()` returns the record callers mutate and then
+  `save_case()`; a caller holding a record while an agent changes the same case must see that
+  change. InMemoryStore gets this for free; DynamoStore keeps an identity map.
+* **Races are settled by the store, not by luck.** Ids come from `allocate`/`next_seq`, a
+  decision leaves `pending` only through `claim_decision`, and one-time side effects go through
+  `claim`. Strands runs tool bodies in threads, so "read, check, write" in the caller is a race.
 """
 
 from __future__ import annotations
 
 import json
+import threading
+from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
@@ -15,6 +27,7 @@ from .models import (
     Decision,
     Incident,
     OrgProfile,
+    OutboundMessage,
     ReliefCentre,
     Resident,
     ResidentCase,
@@ -47,6 +60,15 @@ class Repository(Protocol):
     def events(self, incident_id: str, since_seq: int = 0) -> list[AuditEvent]: ...
     def next_seq(self, incident_id: str) -> int: ...
 
+    # concurrency-safe primitives
+    def allocate(self, incident_id: str, counter: str) -> int: ...
+    def claim_decision(
+        self, decision_id: str, *, responder: str, response: str, responded_at: datetime
+    ) -> Decision | None: ...
+    def claim(self, key: str) -> bool: ...
+    def append_message(self, incident_id: str, message: OutboundMessage) -> None: ...
+    def messages(self, incident_id: str) -> list[OutboundMessage]: ...
+
 
 class NotFound(KeyError):
     """Raised when a record does not exist."""
@@ -70,6 +92,10 @@ class InMemoryStore:
         self._cases: dict[tuple[str, str], ResidentCase] = {}
         self._decisions: dict[str, Decision] = {}
         self._events: dict[str, list[AuditEvent]] = {}
+        self._messages: dict[str, list[OutboundMessage]] = {}
+        self._counters: dict[tuple[str, str], int] = {}
+        self._claims: set[str] = set()
+        self._lock = threading.Lock()
 
     @classmethod
     def from_data_dir(
@@ -183,7 +209,49 @@ class InMemoryStore:
         return [e for e in self._events.get(incident_id, []) if e.seq > since_seq]
 
     def next_seq(self, incident_id: str) -> int:
-        return len(self._events.get(incident_id, [])) + 1
+        """Allocate the next audit sequence number. Never hands the same number out twice."""
+        return self._allocate(incident_id, "evt", len(self._events.get(incident_id, [])))
+
+    def allocate(self, incident_id: str, counter: str) -> int:
+        existing = (
+            len([d for d in self._decisions.values() if d.incident_id == incident_id])
+            if counter == "dec"
+            else 0
+        )
+        return self._allocate(incident_id, counter, existing)
+
+    def _allocate(self, incident_id: str, counter: str, floor: int) -> int:
+        with self._lock:
+            n = max(self._counters.get((incident_id, counter), 0), floor) + 1
+            self._counters[(incident_id, counter)] = n
+            return n
+
+    def claim_decision(
+        self, decision_id: str, *, responder: str, response: str, responded_at: datetime
+    ) -> Decision | None:
+        """Move a decision from pending to answered, once. None if someone got there first."""
+        with self._lock:
+            decision = self.decision(decision_id)
+            if decision.status != "pending":
+                return None
+            decision.status = "answered"
+            decision.responder = responder
+            decision.response = response
+            decision.responded_at = responded_at
+            return decision
+
+    def claim(self, key: str) -> bool:
+        with self._lock:
+            if key in self._claims:
+                return False
+            self._claims.add(key)
+            return True
+
+    def append_message(self, incident_id: str, message: OutboundMessage) -> None:
+        self._messages.setdefault(incident_id, []).append(message)
+
+    def messages(self, incident_id: str) -> list[OutboundMessage]:
+        return list(self._messages.get(incident_id, []))
 
 
 def load_drill_subset(data_dir: Path) -> list[str]:

@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import replace
 from pathlib import Path
 
+import boto3
 import pytest
+from moto import mock_aws
 
 from doorstep_agent.audit import AuditLog
 from doorstep_agent.config import settings
@@ -16,11 +18,34 @@ from doorstep_agent.profiles import load_profile
 from doorstep_agent.risk import score_all
 from doorstep_agent.runtime import RunContext
 from doorstep_agent.state_machine import CasePolicy, Clock
-from doorstep_agent.store import InMemoryStore
+from doorstep_agent.store import InMemoryStore, Repository
+from doorstep_agent.store_dynamo import DynamoBackend, create_table
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
 ALERT_FIXTURE = DATA / "alerts" / "2021-06-pqr-excessive-heat-warning.json"
+
+TABLE = "doorstep-test"
+SUBSET: list[str] = json.loads((DATA / "roster.json").read_text())["drill_subset"]
+
+
+@pytest.fixture
+def aws(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    for name in ("AWS_PROFILE", "AWS_ENDPOINT_URL_DYNAMODB", "AWS_ENDPOINT_URL_S3"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
+    with mock_aws():
+        client = boto3.client("dynamodb", region_name="us-east-1")
+        create_table(client, TABLE)
+        DynamoBackend(TABLE, "juniper-court", client=client).seed_static(DATA)
+        yield
+
+
+def new_backend() -> DynamoBackend:
+    """A second backend is a second process: its own identity map, the same table."""
+    return DynamoBackend(TABLE, "juniper-court", client=boto3.client("dynamodb"))
 
 
 def make_ctx(
@@ -29,20 +54,29 @@ def make_ctx(
     auto_approve: bool = True,
     profile_id: str = "heat",
     sessions_dir: Path | None = None,
+    store: Repository | None = None,
+    create_cases: bool = True,
 ) -> RunContext:
+    """A drill context over the 12-resident subset. Pass `store` to run on another backend."""
     roster = json.loads((DATA / "roster.json").read_text())
-    store = InMemoryStore.from_data_dir(DATA, resident_ids=roster["drill_subset"])
+    store = store or InMemoryStore.from_data_dir(DATA, resident_ids=roster["drill_subset"])
     profile = load_profile(profile_id)
     clock = Clock(compression=30)
     incident_id = "inc-test"
     alert = Alert.from_fixture(json.loads(ALERT_FIXTURE.read_text()))
-    store.save_incident(
-        Incident(
-            id=incident_id, org_id=store.org().id, mode=mode, profile_id=profile.id, alert=alert
+    if create_cases:
+        store.save_incident(
+            Incident(
+                id=incident_id,
+                org_id=store.org().id,
+                mode=mode,
+                profile_id=profile.id,
+                alert=alert,
+                resident_ids=roster["drill_subset"],
+            )
         )
-    )
-    for rid, score in score_all(store.residents(), profile).items():
-        store.save_case(ResidentCase(incident_id=incident_id, resident_id=rid, risk=score))
+        for rid, score in score_all(store.residents(), profile).items():
+            store.save_case(ResidentCase(incident_id=incident_id, resident_id=rid, risk=score))
     cfg = settings()
     if sessions_dir is not None:
         # Paused sessions must land in the test's own tmp dir, never in the repo's .sessions/.

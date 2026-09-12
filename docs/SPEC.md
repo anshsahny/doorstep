@@ -112,7 +112,7 @@ Nothing is ever auto-approved.
 deterministic code, because the model cannot be relied on to act on it. Two live drills proved
 this twice: once the dispatcher forgot to close a case after "I'm handling it", once it never
 sent the volunteer after "Send Sam". **Every option action must have a deterministic branch** —
-`resolve`, `escalate`, `acknowledge` and `assign_volunteer` today — and each must be idempotent,
+`resolve`, `escalate`, `acknowledge`, `assign_volunteer` and `notify_family` (added after the Gate 3 cloud drill; `note` only records an extra label) — and each must be idempotent,
 so it is safe whether or not the model got there first. An option whose action has no branch is a
 decision the system can silently lose. The resumed invocation carries the responder's role, so a
 tool the agent may not call — `record_emergency_call` — is legal precisely because a captain is
@@ -162,6 +162,26 @@ Every event goes through the coordinator on AgentCore Runtime as `{incident_id, 
 - `timer`
 
 The source of truth is DynamoDB plus the S3 sessions. Runtime sessions keyed by incident keep the agent warm.
+
+### 5a. As built in Phase 3 (amended 2026-09-12)
+
+- **One process per incident.** Every event for an incident goes to the AgentCore Runtime session
+  `doorstep-incident-<id>` (33–100 chars). A drill runs the local `DrillRunner` unchanged as a
+  background task in that session (`/ping` reports `HealthyBusy`), so simulated check-ins stay
+  in-process; `checkin-jobs` SQS, `checkin_worker` and the Twilio Lambdas arrive in Phase 4 with
+  the phone path. Model-backed events return in about a second and finish in the background.
+- **Lambdas hold no judgement.** `telegram_webhook`, `admin_replay` and `alert_poller`
+  authenticate, deduplicate, rate-limit and forward. Identity checks and answered-once stay in
+  `decisions.respond_to_decision` inside the coordinator.
+- **Exactly once.** A Telegram `update_id` is claimed before anything else (released only if
+  forwarding fails); a decision leaves `pending` only by a conditional write; deliveries are
+  claimed before sending; an answered decision without `applied_at` is re-applied idempotently.
+- **Timers.** Retries run on the drill clock inside the coordinator. SQS `DelaySeconds` caps at
+  15 minutes, so the evening re-check needs EventBridge Scheduler one-time schedules (Phase 4/6).
+- **Alert poller** defaults to `observe`: new NWS alerts are recorded once and start nothing. In
+  `drill` mode the coordinator's profile gate decides before any model is asked.
+- **Tracing.** The Lambdas use X-Ray active tracing; without it their `Sampled=0` trace header is
+  inherited by the runtime and no spans are recorded.
 
 **Why this is an agent and not a script:**
 - It judges alert relevance against local context.
@@ -333,7 +353,17 @@ Rules:
 | `INC#<id>` | `EVT#<ts>#<seq>` | actor, type, tool, input_summary, policy_decision, reason, rationale |
 | `INC#<id>` | `DEC#<id>` | name, reason, options, audience, status(draft/pending/answered/expired), tool_use_id, interrupt_id, session_id, responder, responded_at, expires_at, delivery[] |
 
-- GSI1: `status#<active>` → incidents (for the poller and dashboard).
+| `INC#<id>` | `MSG#<n>` | outbox: kind, recipient, text, resident_id (what was sent, for the report and violation check) |
+| `INC#<id>` | `COUNTER#<name>` | atomic counters for audit seq, decision numbers, messages |
+| `ORG#<org>` | `CENTRE#<id>` | relief centre: name, kind[], address, lat, lng, hours_sample |
+| `CLAIM#<key>` | `CLAIM` | one-time effects with a TTL: `TGU#<update_id>`, `DELIVERY#…`, `START#…`, `CHECKIN#…`, `IDEM#replay#…`, `ALERT#…` |
+| `RATE#…` / `CAP#…` | `COUNT` | per-IP windows and daily/total caps for paid public paths (TTL) |
+
+- Records are stored as their Pydantic JSON in `doc` with a version `v`; CASE, DEC and META writes are
+  conditional on the version (a second writer fails loudly). Audit rows are `EVT#<seq:08d>` from an
+  atomic counter, which `?since=` needs. Decision ids are unique per incident, so Telegram callback
+  data is `d|<incident>|<decision>|<option>` (≤ 64 bytes).
+- GSI1: `STATUS#active` → incidents (for the poller and dashboard).
 - Sandbox drills copy a 12-resident subset per incident. They never modify the org roster.
 
 ## 11. API (API Gateway HTTP API → `api` Lambda unless noted)
@@ -344,9 +374,9 @@ Rules:
 | GET | `/incidents/{id}` · `/incidents/{id}/events?since=` | sandbox token or captain passcode |
 | POST | `/decisions/{id}` | sandbox token (own drill) or captain passcode |
 | POST | `/voice/session` | sandbox token; returns short-lived voice token |
-| POST | `/admin/replay` | captain passcode |
+| POST | `/admin/replay` | captain passcode in `x-doorstep-passcode` (constant-time; 10 failures/hour per IP), `Idempotency-Key` required; caps: 2 per IP per 10 min, 10/day, 60 total; kill switch |
 | GET | `/evals/report` | public |
-| POST | `/telegram/webhook` | Telegram secret-token header |
+| POST | `/telegram/webhook` | `X-Telegram-Bot-Api-Secret-Token` (constant-time); `update_id` claimed once; taps forwarded to the incident's coordinator; kill switch |
 | POST | `/twilio/voice`, `/twilio/status` | Twilio signature validation |
 | POST | `/internal/checkin-result` | HMAC from voice bridge / worker |
 

@@ -97,14 +97,16 @@ def a_pending_decision(ctx: RunContext, resident_id: str = "r01"):
     return decision
 
 
-def tap(decision_id: str, option_id: str, chat: str, update_id: int = 1) -> dict[str, Any]:
+def tap(
+    decision_id: str, option_id: str, chat: str, update_id: int = 1, incident_id: str = "inc-test"
+) -> dict[str, Any]:
     return {
         "update_id": update_id,
         "callback_query": {
             "id": f"cb{update_id}",
             "from": {"id": int(chat)},
             "message": {"message_id": 101, "chat": {"id": int(chat)}},
-            "data": f"d|{decision_id}|{option_id}",
+            "data": f"d|{incident_id}|{decision_id}|{option_id}",
         },
     }
 
@@ -113,20 +115,33 @@ def tap(decision_id: str, option_id: str, chat: str, update_id: int = 1) -> dict
 
 
 def test_callback_data_round_trips_and_fits_telegrams_limit() -> None:
-    data = callback_data("dec-001", "send_volunteer")
+    # The longest real shape: a cloud incident id, a three-digit decision, the longest option id.
+    data = callback_data("drill-20260912-190501-a1b2", "dec-123", "send_volunteer")
     assert len(data.encode("utf-8")) <= CALLBACK_LIMIT
-    assert parse_callback(data) == ("dec-001", "send_volunteer")
+    assert parse_callback(data) == ("drill-20260912-190501-a1b2", "dec-123", "send_volunteer")
 
 
 def test_callback_data_refuses_to_silently_truncate() -> None:
     with pytest.raises(ValueError, match="too long"):
-        callback_data("dec-" + "x" * 60, "approve")
+        callback_data("inc", "dec-" + "x" * 60, "approve")
 
 
 def test_rubbish_callbacks_are_ignored() -> None:
     assert parse_callback("") is None
     assert parse_callback("hello") is None
-    assert parse_callback("x|dec-001|approve") is None
+    assert parse_callback("x|inc|dec-001|approve") is None
+    assert parse_callback("d|dec-001|approve") is None, "the Phase 2 shape has no incident"
+    assert parse_callback("d||dec-001|approve") is None
+
+
+async def test_a_tap_for_another_incident_changes_nothing(ctx: RunContext) -> None:
+    decision = a_pending_decision(ctx)
+    bot = FakeBot([tap(decision.id, "handle", CAPTAIN_CHAT, incident_id="drill-other")])
+
+    lines = await TelegramNotifier(bot).poll_once(ctx)
+
+    assert lines and "not_found" in lines[0]
+    assert ctx.store.decision(decision.id).status == "pending"
 
 
 def test_every_option_becomes_one_button(ctx: RunContext) -> None:
@@ -252,3 +267,31 @@ async def test_the_poll_advances_its_offset(ctx: RunContext) -> None:
 
     offsets = [p.get("offset") for m, p in bot.calls if m == "getUpdates"]
     assert offsets == [None, 12], "an acknowledged update must not be fetched forever"
+
+
+def test_a_task_for_an_unreachable_volunteer_goes_back_to_the_captain(ctx: RunContext) -> None:
+    """Gate 3 Telegram drill: "Send Sam" to a volunteer with no chat id left the case ASSIGNED."""
+    from doorstep_agent.notify.base import deliver_pending
+    from doorstep_agent.tools import send_volunteer_task
+
+    decision = a_pending_decision(ctx)
+    decision.status = "answered"
+    ctx.store.save_decision(decision)
+    send_volunteer_task(
+        ctx,
+        ctx.store.resident("r01"),
+        ctx.store.volunteer("vol-sam"),  # TELEGRAM_VOLUNTEER_CHAT_IDS[4]: not set in this test
+        "Dizzy and alone.",
+        include_brief=True,
+        tool_use_id="decision:dec-001",
+    )
+    assert ctx.store.case(ctx.incident_id, "r01").state == CaseState.ASSIGNED
+    bot = FakeBot()
+
+    assert deliver_pending(ctx, TelegramNotifier(bot)) == 0
+
+    assert bot.methods() == [], "nothing may be sent to a chat we cannot resolve"
+    case = ctx.store.case(ctx.incident_id, "r01")
+    assert case.state == CaseState.ESCALATED and case.assigned_volunteer is None
+    assert ctx.store.decisions(ctx.incident_id, status="pending") == []
+    assert "could not be delivered to vol-sam" in ctx.audit.events()[-1].reason

@@ -11,7 +11,8 @@ PY := $(UV) run python
 
 .PHONY: help setup node-check test lint fmt check \
 	smoke-01 smoke-02 smoke-03 smoke-04 smoke-05 \
-	local-drill telegram-drill deploy evals web web-deploy
+	local-drill telegram-drill secrets-push deploy destroy seed telegram-webhook \
+	cloud-restart-test cloud-drill scan-logs trace poller evals web web-deploy
 
 help: ## list targets
 	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-14s %s\n", $$1, $$2}'
@@ -62,8 +63,42 @@ local-drill: ## run a drill locally with simulated residents and a terminal boar
 telegram-drill: ## same drill, but decisions go to the real roster chats and wait for real taps
 	$(PY) scripts/local_drill.py --telegram --no-clear $(ARGS)
 
-deploy: ## Phase 3: CDK deploy + AgentCore deploy
-	@echo "make deploy arrives in Phase 3"; exit 1
+# --- Phase 3: cloud (AWS profile doorstep, us-east-1) ---
+CLOUD := AWS_PROFILE=doorstep AWS_REGION=us-east-1 CDK_DEFAULT_REGION=us-east-1
+
+secrets-push: ## copy secrets from .env into SSM SecureStrings (ARGS=--generate-missing)
+	$(CLOUD) $(PY) scripts/secrets_push.py $(ARGS)
+
+deploy: node-check ## CDK deploy of the whole stack (runtime image, Lambdas, API, table), then seed
+	$(UV) sync --all-groups
+	$(CLOUD) npx cdk synth Doorstep --quiet
+	$(CLOUD) $(PY) scripts/cloud/publish_image.py
+	$(CLOUD) npx cdk deploy Doorstep --require-approval never --outputs-file cdk.out/outputs.json
+	$(CLOUD) $(PY) scripts/seed.py
+
+destroy: node-check ## tear the stack down (SSM parameters are kept)
+	$(CLOUD) npx cdk destroy Doorstep --force
+
+seed: ## write the fictional org, roster and volunteers to DynamoDB
+	$(CLOUD) $(PY) scripts/seed.py
+
+telegram-webhook: ## ARGS=set|delete|info: switch the bot between the webhook and long polling
+	$(CLOUD) $(PY) scripts/telegram_webhook.py $(ARGS)
+
+cloud-restart-test: ## Gate 3: pause in one runtime process, answer via the real webhook, resume in another (ARGS=--delay 600)
+	$(CLOUD) $(PY) scripts/cloud/restart_resume.py $(ARGS)
+
+cloud-drill: ## Gate 3: 12-resident drill in AWS via POST /admin/replay (ARGS=--telegram or --auto-approve)
+	$(CLOUD) $(PY) scripts/cloud/replay_cloud.py $(ARGS)
+
+scan-logs: ## search recent runtime/Lambda logs and spans for any SSM secret value (in memory)
+	$(CLOUD) $(PY) scripts/cloud/scan_logs.py $(ARGS)
+
+trace: ## print the spans of one incident's runtime session (ARGS=<incident id>)
+	$(CLOUD) $(PY) scripts/cloud/trace.py $(ARGS)
+
+poller: ## ARGS=on|off: enable or disable the 10-minute NWS alert schedule
+	$(CLOUD) $(PY) scripts/cloud/poller.py $(ARGS)
 
 evals: ## Phase 6: run eval suites, write evals/REPORT.md
 	@echo "make evals arrives in Phase 6"; exit 1

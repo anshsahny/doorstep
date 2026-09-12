@@ -14,22 +14,33 @@ from zoneinfo import ZoneInfo
 
 from .audit import AuditLog
 from .config import Settings, settings
-from .models import Mode, OrgProfile
+from .models import Mode, OrgProfile, OutboundMessage
 from .profiles import HazardProfile
 from .state_machine import CasePolicy, Clock
 from .store import Repository
 
+__all__ = ["OutboundMessage", "RunContext", "StoreOutbox", "resolve_ref"]
+
 _REF = re.compile(r"^env:([A-Z0-9_]+)(?:\[(\d+)\])?$")
 
 
-@dataclass
-class OutboundMessage:
-    """Something Doorstep would say or send. In a drill it is recorded, never delivered."""
+class StoreOutbox(list):
+    """`ctx.outbox` that also writes each message to the store.
 
-    kind: str  # resident_tip | volunteer_task | captain_alert | family_notice | group_broadcast
-    recipient: str  # resident id, volunteer id, "captain", "family:<ref>", "volunteers"
-    text: str
-    resident_id: str | None = None
+    A process-local list is enough for one drill in one process. Once a later process may carry
+    on the same incident (a captain's tap handled after a restart), what was sent has to outlive
+    the process that sent it, or the violation check and the report would see half the story.
+    Callers keep using `ctx.outbox.append(...)` and iterate it as before.
+    """
+
+    def __init__(self, store: Repository, incident_id: str) -> None:
+        super().__init__(store.messages(incident_id))
+        self._store = store
+        self._incident_id = incident_id
+
+    def append(self, message: OutboundMessage) -> None:  # type: ignore[override]
+        self._store.append_message(self._incident_id, message)
+        super().append(message)
 
 
 @dataclass
