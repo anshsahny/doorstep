@@ -23,6 +23,7 @@ from .agents.alert_assessor import AGENT_NAME as ASSESSOR
 from .agents.alert_assessor import alert_task_text, build_alert_assessor
 from .agents.triage import AGENT_NAME as TRIAGE
 from .agents.triage import build_triage_agent
+from .decisions import expires_at
 from .models import (
     Alert,
     AlertAssessment,
@@ -87,6 +88,11 @@ def _gate_assessment(ctx: RunContext, raw: AlertAssessment) -> None:
                 DecisionOption(id="activate", label="Activate the check-in", action="activate"),
                 DecisionOption(id="stand_down", label="Stand down", action="stand_down"),
             ],
+            # Raised by the graph rather than by a paused tool, so it is answerable immediately
+            # and `respond_to_decision` applies it directly instead of resuming an agent.
+            status="pending",
+            audience=ctx.org.captain_id,
+            expires_at=expires_at(ctx),
         )
         if ctx.auto_approve:
             decision.status, decision.responder, decision.response = (
