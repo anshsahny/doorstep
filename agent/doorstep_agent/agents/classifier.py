@@ -1,8 +1,14 @@
-"""classifier: a structured CheckinResult from a transcript, then the deterministic backstop.
+"""classifier: a structured CheckinResult from a transcript, then the deterministic layers.
 
-Order of authority (SPEC §6.1): the model proposes a classification; a mid-call `flag_urgent`
-from the check-in agent raises it to URGENT; the phrase backstop raises it to URGENT. Nothing in
-this module can lower a status. Every disagreement is written to the audit log.
+Order of authority (SPEC §6.1). The model proposes a classification, then three deterministic
+checks may only make the result more cautious, never less:
+
+1. protocol completion: a call with no answer to a required question never established "OK",
+   so an OK becomes UNCLEAR and the state machine retries it;
+2. a mid-call `flag_urgent` from the check-in agent raises the status to URGENT;
+3. the phrase backstop raises it to URGENT when the resident's own words match a red flag.
+
+Nothing here can lower a status. Every disagreement is written to the audit log.
 """
 
 from __future__ import annotations
@@ -85,7 +91,9 @@ def system_prompt(ctx: RunContext) -> str:
         "- NEEDS_HELP if they are safe now but lack something on the needs list, or ask for a "
         "visit or a ride.\n"
         "- OK if they are fine and have what they need.\n"
-        "- UNCLEAR if the conversation did not establish how they are.\n\n"
+        "- UNCLEAR if the conversation did not establish how they are, for example when the call "
+        "ended early or they hung up before answering. A call you could not complete is UNCLEAR, "
+        "never URGENT: URGENT needs a red flag or a stated emergency in their own words.\n\n"
         "Allowed needs (use these ids only):\n"
         f"{needs}\n\n"
         "Allowed red-flag categories (use these ids only):\n"
@@ -120,6 +128,15 @@ def transcript_text(attempt: CheckinAttempt) -> str:
     )
 
 
+def unanswered_required(ctx: RunContext, attempt: CheckinAttempt) -> list[str]:
+    """Required protocol questions (from the profile) the call never got an answer to."""
+    return [
+        q
+        for q in ctx.profile.required_question_ids()
+        if not str(attempt.answers.get(q, "")).strip()
+    ]
+
+
 def _validate_vocab(ctx: RunContext, resident: Resident, raw: Classification) -> CheckinResult:
     profile = ctx.profile
     needs = [n for n in raw.needs if n in profile.need_ids()]
@@ -146,40 +163,67 @@ def _validate_vocab(ctx: RunContext, resident: Resident, raw: Classification) ->
     )
 
 
+async def _classify_with_model(
+    ctx: RunContext, resident: Resident, attempt: CheckinAttempt
+) -> CheckinResult:
+    """The model's own reading of the transcript. A failure here is UNCLEAR, never OK."""
+    actor = f"agent:{AGENT_NAME}"
+    try:
+        agent = build_classifier(ctx)
+        result = await asyncio.wait_for(
+            agent.invoke_async(
+                transcript_text(attempt),
+                invocation_state=ctx.invocation_state(resident_id=resident.id, actor=actor),
+            ),
+            ctx.settings.step_timeout_seconds,
+        )
+        raw = result.structured_output
+        if not isinstance(raw, Classification):
+            raise ValueError("no structured output")
+        return _validate_vocab(ctx, resident, raw)
+    except Exception as exc:  # noqa: BLE001 - the deterministic layers must still run
+        ctx.audit.record(
+            actor=actor,
+            type="note",
+            resident_id=resident.id,
+            reason=f"classifier failed, treating as UNCLEAR: {type(exc).__name__}: {exc}",
+        )
+        return CheckinResult(
+            status=CheckinStatus.UNCLEAR,
+            language=resident.language,
+            summary="Classifier failed; result unclear.",
+        )
+
+
 async def classify_attempt(
     ctx: RunContext, resident: Resident, attempt: CheckinAttempt
 ) -> CheckinResult:
+    """The model proposes; three deterministic layers may only raise what it proposed."""
     actor = f"agent:{AGENT_NAME}"
     if not attempt.answered:
         draft = CheckinResult(
             status=CheckinStatus.NO_ANSWER, language=resident.language, summary="No answer."
         )
     else:
-        try:
-            agent = build_classifier(ctx)
-            result = await asyncio.wait_for(
-                agent.invoke_async(
-                    transcript_text(attempt),
-                    invocation_state=ctx.invocation_state(resident_id=resident.id, actor=actor),
-                ),
-                ctx.settings.step_timeout_seconds,
-            )
-            raw = result.structured_output
-            if not isinstance(raw, Classification):
-                raise ValueError("no structured output")
-            draft = _validate_vocab(ctx, resident, raw)
-        except Exception as exc:  # noqa: BLE001 - the backstop must still run
-            ctx.audit.record(
-                actor=actor,
-                type="note",
-                resident_id=resident.id,
-                reason=f"classifier failed, treating as UNCLEAR: {type(exc).__name__}: {exc}",
-            )
-            draft = CheckinResult(
-                status=CheckinStatus.UNCLEAR,
-                language=resident.language,
-                summary="Classifier failed; result unclear.",
-            )
+        draft = await _classify_with_model(ctx, resident, attempt)
+
+    missing = unanswered_required(ctx, attempt) if attempt.answered else []
+    if missing and draft.status == CheckinStatus.OK:
+        # The phrase backstop can only catch what the resident actually said. If the protocol
+        # never asked how they are, "OK" was never established, so the call is UNCLEAR and the
+        # state machine retries it rather than closing the case.
+        ctx.audit.record(
+            actor="system:protocol",
+            type="backstop",
+            resident_id=resident.id,
+            reason=(
+                f"call ended with no answer to {missing}; the classifier said OK, but OK was "
+                "never established, so the result is UNCLEAR and the call will be retried"
+            ),
+            data={"missing": missing, "answered": sorted(attempt.answers)},
+        )
+        draft.status = CheckinStatus.UNCLEAR
+        draft.summary = f"Protocol incomplete: no answer to {', '.join(missing)}. {draft.summary}"
 
     if attempt.urgent_flags and draft.status != CheckinStatus.URGENT:
         ctx.audit.record(

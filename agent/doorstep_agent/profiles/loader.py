@@ -54,6 +54,8 @@ class CheckinQuestion(_Strict):
     en: str
     es: str
     maps_to_needs: list[str] = Field(default_factory=list)
+    required: bool = False
+    """A call with no answer to a required question has not established how the resident is."""
 
     def text(self, language: Language) -> str:
         return self.es if language == "es" else self.en
@@ -139,6 +141,9 @@ class HazardProfile(_Strict):
 
     def questions_text(self, language: Language) -> list[str]:
         return [q.text(language) for q in self.checkin_questions]
+
+    def required_question_ids(self) -> list[str]:
+        return [q.id for q in self.checkin_questions if q.required]
 
     def hazard_phrase(self, language: Language) -> str:
         return self.script.hazard_phrase_es if language == "es" else self.script.hazard_phrase_en
