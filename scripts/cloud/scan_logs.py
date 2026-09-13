@@ -58,6 +58,7 @@ def main() -> int:
         "/aws/lambda/doorstep-alert-poller",
         "/aws/lambda/doorstep-voice-session",
         "/aws/lambda/doorstep-checkin-worker",
+        "/aws/lambda/doorstep-dashboard",
         "aws/spans",
     ]
     start = int((time.time() - args.hours * 3600) * 1000)

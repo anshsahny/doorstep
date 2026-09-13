@@ -43,7 +43,7 @@ from ..agents.planned import PlannedAction
 from ..audit import AuditHook, AuditLog
 from ..backstop import find_red_flags
 from ..config import Settings, settings
-from ..decisions import expire_due_decisions, redrive_unapplied
+from ..decisions import Responder, expire_due_decisions, redrive_unapplied, respond_to_decision
 from ..drill import DrillRunner
 from ..models import (
     Alert,
@@ -143,6 +143,7 @@ class Coordinator:
             return {"ok": False, "error": "incident_id is missing or malformed"}
         handlers: dict[str, Callable[[str, dict[str, Any]], Awaitable[dict[str, Any]]]] = {
             "replay": self._replay,
+            "sandbox": self._sandbox,
             "alert": self._alert,
             "checkin_result": self._checkin_result,
             "checkin_urgent": self._checkin_urgent,
@@ -248,6 +249,13 @@ class Coordinator:
     async def _replay(self, incident_id: str, event: dict[str, Any]) -> dict[str, Any]:
         return self._start_drill(incident_id, event, alert=None)
 
+    async def _sandbox(self, incident_id: str, event: dict[str, Any]) -> dict[str, Any]:
+        """A public visitor's drill. Whatever the event says, it never reaches a real channel:
+        no Telegram, no simulated captain, and the incident is marked `sandbox` for Cedar."""
+        voice = [str(r) for r in event.get("voice_residents") or []][:1]
+        safe = {"voice_residents": voice, "timeout_seconds": 240.0}
+        return self._start_drill(incident_id, safe, alert=None, mode="sandbox")
+
     async def _alert(self, incident_id: str, event: dict[str, Any]) -> dict[str, Any]:
         """A live alert. The profile's own event list decides before any model is asked."""
         alert = Alert.from_nws_feature(event.get("feature") or {})
@@ -261,11 +269,16 @@ class Coordinator:
         return self._start_drill(incident_id, event, alert=alert)
 
     def _start_drill(
-        self, incident_id: str, event: dict[str, Any], *, alert: Alert | None
+        self,
+        incident_id: str,
+        event: dict[str, Any],
+        *,
+        alert: Alert | None,
+        mode: str = "drill",
     ) -> dict[str, Any]:
         if not self.backend.claim(f"START#{incident_id}"):
             return {"ok": True, "accepted": False, "reason": "incident already started"}
-        telegram = bool(event.get("telegram", False))
+        telegram = mode == "drill" and bool(event.get("telegram", False))
         voice_residents = [str(r) for r in event.get("voice_residents") or []]
         runner = self.runner_factory(
             auto_approve=bool(event.get("auto_approve", False)),
@@ -279,6 +292,7 @@ class Coordinator:
             run_options={"telegram": telegram, "voice_residents": voice_residents},
             voice_residents=voice_residents,
             cfg=self.cfg,
+            **({"mode": mode} if mode != "drill" else {}),
         )
         self._runners[incident_id] = runner
 
@@ -599,9 +613,20 @@ class Coordinator:
         return {"ok": True, "accepted": True}
 
     async def _decision_response(self, incident_id: str, event: dict[str, Any]) -> dict[str, Any]:
+        """A tap from Telegram (`callback_query`) or the dashboard (`web`). Both end in the same
+        `respond_to_decision`, under the same lock, followed by the same redrive and delivery."""
         query = event.get("callback_query")
-        if not isinstance(query, dict):
-            return {"ok": False, "error": "decision_response needs a callback_query"}
+        web = event.get("web")
+        if isinstance(web, dict):
+            query = None
+            fields = [str(web.get(k) or "") for k in ("decision_id", "option_id", "subject")]
+            if not all(fields):
+                return {
+                    "ok": False,
+                    "error": "a web decision needs decision_id, option_id, subject",
+                }
+        elif not isinstance(query, dict):
+            return {"ok": False, "error": "decision_response needs a callback_query or web"}
         try:
             ctx = self._context(incident_id)
         except NotFound:
@@ -612,7 +637,19 @@ class Coordinator:
                 expire_due_decisions(ctx)
                 telegram = _telegram(ctx)
                 notifier = self._notifier(telegram)
-                if isinstance(notifier, TelegramNotifier):
+                if query is None:
+                    decision_id, option_id, subject = fields
+                    outcome = await respond_to_decision(
+                        ctx, decision_id, option_id, Responder(source="web", external_id=subject)
+                    )
+                    kind = outcome.kind
+                    if outcome.applied and isinstance(notifier, TelegramNotifier):
+                        # Keep the captain's phone honest: its buttons now say it was answered.
+                        try:
+                            notifier.confirm(ctx, outcome.decision, outcome.message)
+                        except Exception:  # noqa: BLE001 - an edit is cosmetic; the answer stands
+                            log.warning("could not edit the Telegram message for %s", decision_id)
+                elif isinstance(notifier, TelegramNotifier):
                     line = await notifier.handle_tap(ctx, query)
                     kind = (line or "").rsplit(": ", 1)[-1]
                 else:

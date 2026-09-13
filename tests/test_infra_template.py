@@ -154,7 +154,7 @@ def test_logs_expire_and_the_api_is_throttled(template) -> None:
     for group in resources(template, "AWS::Logs::LogGroup").values():
         assert group["Properties"]["RetentionInDays"] == 14
     stage = next(iter(resources(template, "AWS::ApiGatewayV2::Stage").values()))["Properties"]
-    assert stage["DefaultRouteSettings"]["ThrottlingRateLimit"] == 5
+    assert stage["DefaultRouteSettings"]["ThrottlingRateLimit"] == 2
     assert stage["RouteSettings"]["POST /admin/replay"]["ThrottlingRateLimit"] == 1
 
 
@@ -212,3 +212,55 @@ def test_the_call_queue_never_retries_a_real_call(template) -> None:
     assert jobs["Properties"]["RedrivePolicy"]["maxReceiveCount"] == 1
     runtime = [st for lid, st in statements(template) if lid.startswith("RuntimePolicy")]
     assert any("sqs:SendMessage" in as_list(st["Action"]) for st in runtime)
+
+
+# --- Phase 5: the dashboard -----------------------------------------------------------------
+
+
+def test_every_bucket_is_private_and_the_site_is_served_only_through_cloudfront(template) -> None:
+    for bucket in resources(template, "AWS::S3::Bucket").values():
+        assert all(bucket["Properties"]["PublicAccessBlockConfiguration"].values())
+    (dist,) = resources(template, "AWS::CloudFront::Distribution").values()
+    config = dist["Properties"]["DistributionConfig"]
+    assert config["DefaultCacheBehavior"]["ViewerProtocolPolicy"] == "redirect-to-https"
+    assert config["PriceClass"] == "PriceClass_100"
+    assert resources(template, "AWS::CloudFront::OriginAccessControl")
+    policies = json.dumps(resources(template, "AWS::S3::BucketPolicy"))
+    assert "cloudfront.amazonaws.com" in policies
+
+
+def test_the_dashboard_function_reads_incidents_and_counts_its_own_caps_only(template) -> None:
+    board = [st for lid, st in statements(template) if lid.startswith("dashboardRole")]
+    text = json.dumps(board)
+    for secret in ("telegram", "twilio", "call_allowlist", "operator_test_number"):
+        assert secret not in text, secret
+    writes = [
+        st
+        for st in board
+        if {"dynamodb:PutItem", "dynamodb:UpdateItem"} & set(as_list(st["Action"]))
+    ]
+    prefixes = {
+        p
+        for st in writes
+        for p in st["Condition"]["ForAllValues:StringLike"]["dynamodb:LeadingKeys"]
+    }
+    assert prefixes == {"RATE#sandbox#*", "CAP#sandbox#*", "RATE#passfail#*", "CLAIM#IDEM#drills#*"}
+    assert not any(p.startswith(("INC#", "ORG#")) for p in prefixes), "reads only, never writes"
+
+
+def test_every_route_is_throttled_and_cors_names_the_site_only(template) -> None:
+    routes = {
+        r["Properties"]["RouteKey"]
+        for r in resources(template, "AWS::ApiGatewayV2::Route").values()
+    }
+    stage = next(iter(resources(template, "AWS::ApiGatewayV2::Stage").values()))["Properties"]
+    assert routes <= set(stage["RouteSettings"]), routes - set(stage["RouteSettings"])
+    assert stage["RouteSettings"]["GET /incidents/{incident_id}"]["ThrottlingRateLimit"] == 3
+    assert stage["RouteSettings"]["POST /drills"]["ThrottlingRateLimit"] == 1
+    (api,) = resources(template, "AWS::ApiGatewayV2::Api").values()
+    origins = api["Properties"]["CorsConfiguration"]["AllowOrigins"]
+    assert "*" not in json.dumps(origins)
+    assert [o for o in origins if isinstance(o, str)] == [
+        "http://localhost:5174",
+        "http://localhost:5173",
+    ]

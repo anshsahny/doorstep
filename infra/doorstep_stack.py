@@ -13,6 +13,9 @@ What is here, and the one rule each part follows:
   holds no Telegram or Twilio secret.
 * Lambdas behind an HTTP API and a schedule. Each has its own role, its own log group, and
   DynamoDB access limited to the key prefixes it owns (`dynamodb:LeadingKeys`).
+* The dashboard (Phase 5): a private S3 bucket behind CloudFront (origin access control), and one
+  `dashboard` Lambda for sandbox drills, captain sessions, reads and answers. The API stays on its
+  own domain, not behind CloudFront, so per-IP limits see the visitor's address.
 * No secret appears anywhere in this file, the template, or the outputs. Parameters are
   referenced by name; their values are written by `make secrets-push`.
 """
@@ -31,6 +34,8 @@ from aws_cdk import (
 from aws_cdk import aws_apigatewayv2 as apigw
 from aws_cdk import aws_apigatewayv2_integrations as integrations
 from aws_cdk import aws_bedrockagentcore as agentcore
+from aws_cdk import aws_cloudfront as cloudfront
+from aws_cdk import aws_cloudfront_origins as origins
 from aws_cdk import aws_dynamodb as dynamodb
 from aws_cdk import aws_ecr_assets as ecr_assets
 from aws_cdk import aws_iam as iam
@@ -47,8 +52,21 @@ RUNTIME_NAME = "doorstep_coordinator"
 VOICE_RUNTIME_NAME = "doorstep_voice"
 SONIC_MODEL = "amazon.nova-2-sonic-v1:0"
 VOICE_TOKEN_HEADER = "X-Amzn-Bedrock-AgentCore-Runtime-Custom-Voice-Token"
-# Browser pages that may ask for a voice link (Phase 5 adds the dashboard's CloudFront origin).
-VOICE_ORIGINS = ["http://localhost:5174"]
+# Local pages that may call the API: the voice test page and the Vite dev server. The deployed
+# dashboard's CloudFront origin is added in the stack.
+LOCAL_ORIGINS = ["http://localhost:5174", "http://localhost:5173"]
+# Route throttles (steady requests per second, burst). Reads are the one spend a visitor can
+# sustain without a counter, so the board's poll is the tightest (docs/COST.md).
+ROUTE_THROTTLES = {
+    "POST /admin/replay": (1, 2),
+    # Human taps; Telegram retries anything refused, so a low steady rate loses nothing.
+    "POST /telegram/webhook": (2, 5),
+    "POST /voice/session": (1, 3),
+    "POST /drills": (1, 2),
+    "POST /captain/session": (1, 2),
+    "GET /incidents/{incident_id}": (3, 6),
+    "POST /incidents/{incident_id}/decisions/{decision_id}": (2, 4),
+}
 SSM_PREFIX = "/doorstep"
 MODELS = {
     # inference profile id -> the foundation model it routes to (us-east-1/us-east-2/us-west-2)
@@ -592,6 +610,72 @@ class DoorstepStack(Stack):
             )
         )
 
+        board = function(
+            "dashboard",
+            "doorstep_api.dashboard.handler",
+            params=[
+                "internal_hmac_secret",
+                "captain_passcode",
+                "kill_switch",
+                "caps",
+                "demo_video_url",
+            ],
+            key_prefixes=[
+                "RATE#sandbox#*",
+                "CAP#sandbox#*",
+                "RATE#passfail#*",
+                "CLAIM#IDEM#drills#*",
+            ],
+            item_actions=[*claim_actions, "dynamodb:UpdateItem"],
+            timeout=15,
+            extra_env={"DOORSTEP_ORG_ID": org["id"]},
+        )
+        board.add_to_role_policy(
+            iam.PolicyStatement(
+                sid="ReadIncidentsAndRoster",
+                actions=["dynamodb:GetItem", "dynamodb:Query"],
+                resources=[table.table_arn],
+                conditions={
+                    "ForAllValues:StringLike": {"dynamodb:LeadingKeys": ["INC#*", "ORG#*"]}
+                },
+            )
+        )
+        # --- the dashboard site ---
+        site_bucket = s3.Bucket(
+            self,
+            "Site",
+            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
+            encryption=s3.BucketEncryption.S3_MANAGED,
+            enforce_ssl=True,
+            removal_policy=RemovalPolicy.DESTROY,
+            auto_delete_objects=True,
+        )
+        site = cloudfront.Distribution(
+            self,
+            "SiteDistribution",
+            comment="Doorstep dashboard",
+            default_root_object="index.html",
+            price_class=cloudfront.PriceClass.PRICE_CLASS_100,
+            http_version=cloudfront.HttpVersion.HTTP2_AND_3,
+            default_behavior=cloudfront.BehaviorOptions(
+                origin=origins.S3BucketOrigin.with_origin_access_control(site_bucket),
+                viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                cache_policy=cloudfront.CachePolicy.CACHING_OPTIMIZED,
+                response_headers_policy=cloudfront.ResponseHeadersPolicy.SECURITY_HEADERS,
+                compress=True,
+            ),
+            # A single-page app: a deep link such as /board loads index.html.
+            error_responses=[
+                cloudfront.ErrorResponse(
+                    http_status=code,
+                    response_http_status=200,
+                    response_page_path="/index.html",
+                    ttl=Duration.seconds(0),
+                )
+                for code in (403, 404)
+            ],
+        )
+
         # --- HTTP API ---
         api = apigw.HttpApi(
             self,
@@ -599,9 +683,9 @@ class DoorstepStack(Stack):
             api_name="doorstep",
             create_default_stage=False,
             cors_preflight=apigw.CorsPreflightOptions(
-                allow_origins=VOICE_ORIGINS,
-                allow_methods=[apigw.CorsHttpMethod.POST],
-                allow_headers=["content-type"],
+                allow_origins=[*LOCAL_ORIGINS, f"https://{site.distribution_domain_name}"],
+                allow_methods=[apigw.CorsHttpMethod.GET, apigw.CorsHttpMethod.POST],
+                allow_headers=["content-type", "authorization", "idempotency-key"],
                 max_age=Duration.hours(1),
             ),
         )
@@ -611,7 +695,7 @@ class DoorstepStack(Stack):
             http_api=api,
             stage_name="$default",
             auto_deploy=True,
-            throttle=apigw.ThrottleSettings(rate_limit=5, burst_limit=10),
+            throttle=apigw.ThrottleSettings(rate_limit=2, burst_limit=5),
         )
         routes = [
             *api.add_routes(
@@ -629,15 +713,34 @@ class DoorstepStack(Stack):
                 methods=[apigw.HttpMethod.POST],
                 integration=integrations.HttpLambdaIntegration("VoiceSession", voice_link),
             ),
+            *api.add_routes(
+                path="/drills",
+                methods=[apigw.HttpMethod.POST],
+                integration=integrations.HttpLambdaIntegration("Drills", board),
+            ),
+            *api.add_routes(
+                path="/captain/session",
+                methods=[apigw.HttpMethod.POST],
+                integration=integrations.HttpLambdaIntegration("CaptainSession", board),
+            ),
+            *api.add_routes(
+                path="/incidents/{incident_id}",
+                methods=[apigw.HttpMethod.GET],
+                integration=integrations.HttpLambdaIntegration("ReadIncident", board),
+            ),
+            *api.add_routes(
+                path="/incidents/{incident_id}/decisions/{decision_id}",
+                methods=[apigw.HttpMethod.POST],
+                integration=integrations.HttpLambdaIntegration("AnswerDecision", board),
+            ),
         ]
         # Route-level throttling names the routes, so they must exist before the stage.
         for route in routes:
             stage.node.add_dependency(route)
         cfn_stage = stage.node.default_child
         cfn_stage.route_settings = {  # type: ignore[union-attr]
-            "POST /admin/replay": {"ThrottlingRateLimit": 1, "ThrottlingBurstLimit": 2},
-            "POST /telegram/webhook": {"ThrottlingRateLimit": 10, "ThrottlingBurstLimit": 20},
-            "POST /voice/session": {"ThrottlingRateLimit": 1, "ThrottlingBurstLimit": 3},
+            route: {"ThrottlingRateLimit": rate, "ThrottlingBurstLimit": burst}
+            for route, (rate, burst) in ROUTE_THROTTLES.items()
         }
 
         # --- schedule ---
@@ -667,3 +770,6 @@ class DoorstepStack(Stack):
         CfnOutput(self, "VoiceRuntimeArn", value=voice_runtime.attr_agent_runtime_arn)
         CfnOutput(self, "TableName", value=table.table_name)
         CfnOutput(self, "DataBucket", value=bucket.bucket_name)
+        CfnOutput(self, "SiteBucket", value=site_bucket.bucket_name)
+        CfnOutput(self, "SiteDistributionId", value=site.distribution_id)
+        CfnOutput(self, "SiteUrl", value=f"https://{site.distribution_domain_name}")

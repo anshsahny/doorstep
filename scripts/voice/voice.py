@@ -158,6 +158,16 @@ def synth(text: str, workdir: Path, name: str, rate: int = 16000) -> bytes:
         return w.readframes(w.getnframes())
 
 
+def captain_token(out: dict[str, str]) -> str:
+    """Voice links need a dashboard session since Phase 5; the operator's is the captain's."""
+    passcode = (dotenv_values(ROOT / ".env").get("CAPTAIN_PASSCODE") or "").strip()
+    reply = httpx.post(
+        out["ApiUrl"].rstrip("/") + "/captain/session", json={"passcode": passcode}, timeout=20
+    )
+    reply.raise_for_status()
+    return reply.json()["token"]
+
+
 async def run_e2e(args: argparse.Namespace) -> int:
     aws = session()
     out = outputs(aws)
@@ -169,7 +179,10 @@ async def run_e2e(args: argparse.Namespace) -> int:
     reply = httpx.post(
         out["ApiUrl"].rstrip("/") + "/voice/session",
         json={"incident_id": args.incident, "resident_id": args.resident},
-        headers={"origin": f"http://localhost:{PAGE_PORT}"},
+        headers={
+            "origin": f"http://localhost:{PAGE_PORT}",
+            "authorization": f"Bearer {captain_token(out)}",
+        },
         timeout=20,
     )
     if reply.status_code != 201:

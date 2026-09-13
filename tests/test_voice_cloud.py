@@ -24,7 +24,7 @@ from conftest import SUBSET, make_ctx, new_backend
 from doorstep_agent.cloud.coordinator import Coordinator
 from doorstep_agent.config import settings
 from doorstep_agent.models import CaseState, CheckinResult, CheckinStatus
-from doorstep_api import voice_session
+from doorstep_api import access, voice_session
 from doorstep_voice import tokens
 from doorstep_voice.serve import TOKEN_HEADER, VoiceDeps, serve_browser, token_from
 from doorstep_voice.sink import page_is_out
@@ -311,9 +311,14 @@ def seed_incident(dynamodb: Any, *, mode: str = "drill", voice: list[str] | None
     )
 
 
-def session_event(resident: str = "r04", ip: str = "5.6.7.8") -> dict[str, Any]:
+def session_event(
+    resident: str = "r04", ip: str = "5.6.7.8", token: str | None = None
+) -> dict[str, Any]:
+    if token is None:
+        token = access.mint(SECRET, scope="captain", ttl_seconds=600)
     return {
         "requestContext": {"http": {"sourceIp": ip}},
+        "headers": {"authorization": f"Bearer {token}"},
         "body": json.dumps({"incident_id": "drill-x-1", "resident_id": resident}),
     }
 
@@ -375,6 +380,22 @@ def test_voice_links_are_capped_per_ip_per_day_and_in_total(voice_lambda) -> Non
         for i in range(3)
     ]
     assert other_ips == [201, 429, 429], "the daily cap binds everyone together"
+
+
+def test_a_voice_link_needs_a_session_for_that_drill(voice_lambda) -> None:
+    seed_incident(voice_lambda.dynamodb, mode="sandbox")
+    other = access.mint(SECRET, scope="sandbox", incident_id="sandbox-other-1", ttl_seconds=600)
+    mine = access.mint(SECRET, scope="sandbox", incident_id="drill-x-1", ttl_seconds=600)
+    expired = access.mint(SECRET, scope="captain", ttl_seconds=1, now=1_000_000)
+    forged = mine[:-4] + "AAAA"
+    for token in ("", other, expired, forged):
+        result = voice_session.handler(session_event(token=token), deps=voice_lambda)
+        assert result["statusCode"] == 401, token
+    assert voice_session.handler(session_event(token=mine), deps=voice_lambda)["statusCode"] == 201
+    counters = voice_lambda.dynamodb.scan(TableName="doorstep")["Items"]
+    assert sum(1 for i in counters if i["PK"]["S"].startswith("CAP#voice#")) == 2, (
+        "refused requests never touch a counter"
+    )
 
 
 def test_the_kill_switch_stops_voice_links(voice_lambda) -> None:

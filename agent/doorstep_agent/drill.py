@@ -26,7 +26,7 @@ from .audit import AuditLog
 from .config import Settings, settings
 from .decisions import Responder, expire_due_decisions, redrive_unapplied, respond_to_decision
 from .graph import start_incident
-from .models import Alert, CaseState, Incident, ResidentCase, utcnow
+from .models import Alert, CaseState, Incident, Mode, ResidentCase, utcnow
 from .notify.base import Notifier, RecordingNotifier, deliver_pending
 from .profiles import load_profile
 from .runtime import RunContext, StoreOutbox
@@ -99,8 +99,14 @@ class DrillRunner:
         alert: Alert | None = None,
         run_options: dict[str, Any] | None = None,
         voice_residents: list[str] | None = None,
+        mode: Mode = "drill",
     ) -> None:
         self.cfg = cfg or settings()
+        # "sandbox" is a public visitor's drill: the same simulation, but Cedar's
+        # `sandbox_never_real_channels` applies and no real channel is ever passed in.
+        if mode not in ("drill", "sandbox"):
+            raise ValueError(f"a DrillRunner cannot run a {mode!r} incident")
+        self.mode: Mode = mode
         # Residents a person will answer for by voice: the drill never simulates them and does
         # not wait for them; their results arrive as coordinator events.
         self.voice_residents = frozenset(voice_residents or [])
@@ -153,7 +159,7 @@ class DrillRunner:
             Incident(
                 id=incident_id,
                 org_id=store.org().id,
-                mode="drill",
+                mode=self.mode,
                 profile_id=self.profile.id,
                 alert=alert,
                 resident_ids=resident_ids,
@@ -170,7 +176,7 @@ class DrillRunner:
             incident_id=incident_id,
             profile=self.profile,
             org=store.org(),
-            mode="drill",
+            mode=self.mode,
             clock=clock,
             policy=CasePolicy(
                 clock,

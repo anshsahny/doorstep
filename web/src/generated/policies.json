@@ -1,0 +1,104 @@
+[
+  {
+    "id": "sandbox_never_real_channels",
+    "file": "agent/policies/sandbox.cedar",
+    "cedar": "// SPEC §8 rule 2: the sandbox never touches real channels. A forbid always beats a permit.\n@id(\"sandbox_never_real_channels\")\nforbid(\n  principal,\n  action in [\n    Action::\"place_checkin_call\",\n    Action::\"assign_volunteer\",\n    Action::\"broadcast_to_volunteers\",\n    Action::\"notify_family\"\n  ],\n  resource\n)\nwhen { context.session.mode == \"sandbox\" && context.session.channel == \"real\" };",
+    "title": "The public demo never phones or messages a real person",
+    "kind": "forbid",
+    "plain": "In sandbox mode (the drill anyone can run from this site), Doorstep cannot place a real phone call, send a volunteer, message the volunteer group or contact a family member over a real channel. This rule is a \"forbid\", so it wins over every rule that would otherwise allow those actions.",
+    "protects": "Real people, from strangers trying the demo.",
+    "checked_by": [
+      "Sandbox forbid beats every permit on a real channel",
+      "Deny call in drill and sandbox modes"
+    ]
+  },
+  {
+    "id": "real_call_guarded",
+    "file": "agent/policies/calls.cedar",
+    "cedar": "// SPEC §8 rule 1: real calls go only to allowlisted, consenting residents, within attempt and\n// quiet-hour limits (8 AM to 9 PM local unless the alert is Extreme), and only in live mode.\n// Quiet hours are waived for one case only: an incident flagged `operator_test` calling the\n// operator's own test number (every other condition still applies). Decided 2026-09-12, Phase 4.\n@id(\"real_call_guarded\")\npermit(principal, action == Action::\"place_checkin_call\", resource)\nwhen {\n  context.session.mode == \"live\" &&\n  context.session.callee_allowlisted == true &&\n  context.session.callee_consented == true &&\n  context.session.attempts_last_hour < 3 &&\n  ((context.session.local_hour >= 8 && context.session.local_hour < 21) ||\n   context.session.alert_severity == \"Extreme\" ||\n   context.session.operator_test_call == true)\n};",
+    "title": "Real calls only to people on the list, at reasonable hours",
+    "kind": "permit",
+    "plain": "Doorstep may place a real check-in call only when all of these are true: it is a live incident (not a drill), the number is on the approved call list, the resident agreed to be called, fewer than 3 calls went to them in the last hour, and it is between 8 AM and 9 PM local time. Late calls are allowed only for the most severe alerts, or when the operator tests with their own phone. The code checks the call list a second time before dialling.",
+    "protects": "Residents, from calls they did not agree to or calls in the middle of the night.",
+    "checked_by": [
+      "Deny call to non allowlisted number",
+      "Deny call without consent",
+      "Deny call after three attempts in an hour",
+      "Quiet hours deny unless extreme"
+    ]
+  },
+  {
+    "id": "assign_available_nearby_volunteer",
+    "file": "agent/policies/volunteers.cedar",
+    "cedar": "// SPEC §8 rule 3: resident details go only to the captain or the volunteer assigned to that\n// resident. The brief travels only inside assign_volunteer (to that one volunteer), and only when\n// that volunteer is available and within range. High-risk assignments additionally pause for\n// captain approval (Strands interrupt, Phase 2).\n@id(\"assign_available_nearby_volunteer\")\npermit(principal, action == Action::\"assign_volunteer\", resource)\nwhen {\n  context.session.volunteer_available == true &&\n  context.session.volunteer_distance_km < 3\n};",
+    "title": "Only an available volunteer nearby can be sent to a door",
+    "kind": "permit",
+    "plain": "Doorstep may send a volunteer to check on someone only if that volunteer is marked available and lives within 3 km. The short brief about the resident travels only to that one volunteer. For high-risk residents the captain must approve the visit first.",
+    "protects": "Residents' details, and volunteers' time.",
+    "checked_by": [
+      "Assign volunteer requires available and within 3 km"
+    ]
+  },
+  {
+    "id": "broadcast_without_resident_details",
+    "file": "agent/policies/volunteers.cedar",
+    "cedar": "// Group broadcasts never contain resident details.\n@id(\"broadcast_without_resident_details\")\npermit(principal, action == Action::\"broadcast_to_volunteers\", resource)\nwhen { context.input.include_resident_details == false };",
+    "title": "Group messages never name a resident",
+    "kind": "permit",
+    "plain": "Doorstep may message the whole volunteer group, but only if the message contains no resident details. Anything about a particular person goes to one assigned volunteer or the captain, never to the group.",
+    "protects": "Residents' privacy.",
+    "checked_by": [
+      "Deny group broadcast containing resident details",
+      "Allow group broadcast without resident details"
+    ]
+  },
+  {
+    "id": "family_contact_needs_consent",
+    "file": "agent/policies/family.cedar",
+    "cedar": "// SPEC §8 rule 4: family contact requires the resident's consent.\n@id(\"family_contact_needs_consent\")\npermit(principal, action == Action::\"notify_family\", resource)\nwhen { context.session.family_consent == true };",
+    "title": "Family is contacted only with the resident's consent",
+    "kind": "permit",
+    "plain": "Doorstep may contact a resident's family member only if the resident agreed to that in advance.",
+    "protects": "Residents' say over who hears about them.",
+    "checked_by": [
+      "Family contact requires consent"
+    ]
+  },
+  {
+    "id": "emergency_calls_recorded_by_captain_only",
+    "file": "agent/policies/emergency.cedar",
+    "cedar": "// SPEC §8 rule 5: emergency calls are recorded by humans only. Doorstep never contacts emergency\n// services itself; it tells the resident to call 911 and pages a human. The agent principal\n// (role \"agent\") never matches this permit, so its attempts are denied and audited.\n@id(\"emergency_calls_recorded_by_captain_only\")\npermit(principal, action == Action::\"record_emergency_call\", resource)\nwhen { context.session.role == \"captain\" };",
+    "title": "Only a person can record an emergency call",
+    "kind": "permit",
+    "plain": "Doorstep never calls emergency services. When someone may be in danger it tells them to call 911 and pages the captain at once. Only the captain (a person) can record that an emergency call was made; the agent's attempts are refused and logged.",
+    "protects": "Everyone, from an AI deciding it has handled an emergency.",
+    "checked_by": [
+      "Deny agent recording an emergency call but allow the captain"
+    ]
+  },
+  {
+    "id": "read_only_always",
+    "file": "agent/policies/read_only.cedar",
+    "cedar": "// SPEC §8 rule 6: read-only tools are always allowed, plus the side-effect-free helpers the\n// spec lists as \"always permitted\" (timers, resident tips, escalation, closing a case).\n@id(\"read_only_always\")\npermit(\n  principal,\n  action in [\n    Action::\"get_org_profile\",\n    Action::\"get_roster\",\n    Action::\"score_residents\",\n    Action::\"get_resident_memory\",\n    Action::\"find_relief_centres\",\n    Action::\"find_nearest_volunteers\",\n    Action::\"schedule_recheck\",\n    Action::\"send_resident_tip\",\n    Action::\"escalate_to_captain\",\n    Action::\"close_case\"\n  ],\n  resource\n);",
+    "title": "Looking things up and closing a case are always allowed",
+    "kind": "permit",
+    "plain": "Reading the roster, scoring who to call first, finding relief centres or nearby volunteers, setting a reminder to check again, sending a resident a safety tip, paging the captain and closing a case change nothing outside Doorstep, so they are always allowed.",
+    "protects": "The check-ins themselves: the safe steps are never blocked.",
+    "checked_by": [
+      "Read only and always permitted tools",
+      "Unknown tool is denied fail closed"
+    ]
+  },
+  {
+    "id": "simulated_checkins_outside_live",
+    "file": "agent/policies/read_only.cedar",
+    "cedar": "// Simulated check-ins only exist in drills and the sandbox (SPEC §7).\n@id(\"simulated_checkins_outside_live\")\npermit(principal, action == Action::\"start_simulated_checkin\", resource)\nwhen { [\"drill\", \"sandbox\"].contains(context.session.mode) };",
+    "title": "Practice calls happen only in drills and the demo",
+    "kind": "permit",
+    "plain": "Simulated check-ins, where a fictional resident is played by a model, may run only in drills and in the sandbox, never during a real incident.",
+    "protects": "A real incident, from being mixed up with practice.",
+    "checked_by": [
+      "Simulated checkins only outside live"
+    ]
+  }
+]

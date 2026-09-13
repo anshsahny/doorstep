@@ -1,7 +1,8 @@
 """POST /voice/session: a 60-second link for one browser check-in (Nova 2 Sonic costs money).
 
 The browser asks to answer the call for one resident of one incident. In order, cheapest first:
-kill switch; the request shape; the incident must be a drill or sandbox incident and the resident
+kill switch; the request shape; a dashboard token for this incident (a visitor's own sandbox drill,
+or the captain's); the incident must be a drill or sandbox incident and the resident
 one it reserved for voice (so nobody can talk over a simulated or real check-in); a per-IP limit;
 a daily cap; a cap for the whole judging period. Only then is a token minted and a SigV4 presigned
 WebSocket URL to the voice runtime returned, with the token signed into it.
@@ -22,7 +23,7 @@ from botocore.awsrequest import AWSRequest
 
 from doorstep_voice.tokens import mint
 
-from . import common
+from . import access, common
 from .common import DEPS, body_of, log, response
 
 RESIDENT_ID = re.compile(r"^[a-z0-9][a-z0-9-]{1,30}$")
@@ -79,6 +80,10 @@ def handler(event: dict[str, Any], context: Any = None, deps: common.Deps | None
     resident_id = str(body.get("resident_id") or "")
     if not common.INCIDENT_ID.match(incident_id) or not RESIDENT_ID.match(resident_id):
         return response(400, {"error": "Send incident_id and resident_id."})
+    try:
+        access.for_incident(event, deps.param("internal_hmac_secret"), incident_id)
+    except access.AccessError as exc:
+        return response(401, {"error": f"Voice check-ins need your drill session: {exc}."})
 
     doc = incident_doc(deps, incident_id)
     if doc is None:

@@ -172,6 +172,8 @@ def test_a_wrong_passcode_is_refused_and_eventually_rate_limited(deps: Deps) -> 
         for _ in range(12)
     ]
     assert statuses[:10] == [401] * 10 and statuses[10:] == [429, 429]
+    locked = admin_replay.handler(replay_event(key="key-right-guess"), deps=deps)
+    assert locked["statusCode"] == 429, "locked out means the right passcode too"
     assert deps._agentcore.calls == []
 
 

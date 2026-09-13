@@ -12,7 +12,8 @@ PY := $(UV) run python
 .PHONY: help setup node-check test lint fmt check \
 	smoke-01 smoke-02 smoke-03 smoke-04 smoke-05 \
 	local-drill telegram-drill secrets-push deploy destroy seed telegram-webhook \
-	cloud-restart-test cloud-drill scan-logs trace poller evals web web-deploy
+	cloud-restart-test cloud-drill scan-logs trace poller evals web web-deploy \
+	web-export web-test web-recorded cap-test lighthouse keyboard-pass
 
 help: ## list targets
 	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-14s %s\n", $$1, $$2}'
@@ -132,8 +133,30 @@ phone-evidence: ## what an incident recorded for a phone call (ARGS=<incident id
 evals: ## Phase 6: run eval suites, write evals/REPORT.md
 	@echo "make evals arrives in Phase 6"; exit 1
 
-web: ## Phase 5: run the dashboard locally
-	@echo "make web arrives in Phase 5"; exit 1
+# --- Phase 5: dashboard ---
 
-web-deploy: ## Phase 5: build + publish the dashboard
-	@echo "make web-deploy arrives in Phase 5"; exit 1
+web-export: ## regenerate web/src/generated (profile labels, Cedar policies + plain English)
+	$(PY) scripts/web_export.py
+
+web: node-check web-export ## run the dashboard on http://localhost:5173 against the deployed API
+	$(CLOUD) $(PY) -c "import json; o=json.load(open('cdk.out/outputs.json'))['Doorstep']; open('web/public/config.json', 'w').write(json.dumps({'apiUrl': o['ApiUrl']}) + chr(10))"
+	cd web && npm install && npx vite --port 5173 --strictPort
+
+web-test: node-check ## typecheck and unit-test the dashboard
+	cd web && npx tsc --noEmit && npx vitest run
+
+web-deploy: node-check web-export ## build the dashboard and publish it to S3 + CloudFront
+	cd web && npm install && npx tsc --noEmit && npx vite build
+	$(CLOUD) $(PY) scripts/web_deploy.py
+
+web-recorded: ## save a finished drill as the dashboard's recorded drill (ARGS=<incident id>)
+	$(CLOUD) $(PY) scripts/web_recorded.py $(ARGS)
+
+cap-test: ## Gate 5: prove every sandbox and voice cap and the kill switch on the deployed API (~$0.38)
+	$(CLOUD) $(PY) scripts/cloud/cap_test.py $(ARGS)
+
+keyboard-pass: node-check ## Gate 5: keyboard-only pass in real Chrome (ARGS="--live" starts one sandbox drill, ~$0.38)
+	cd web && node scripts/keyboard-pass.mjs $$(python3 -c "import json; print(json.load(open('../cdk.out/outputs.json'))['Doorstep']['SiteUrl'])") $(ARGS)
+
+lighthouse: node-check ## Lighthouse accessibility scores for the deployed dashboard (ARGS=--url ...)
+	$(CLOUD) $(PY) scripts/web_lighthouse.py $(ARGS)

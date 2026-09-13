@@ -370,17 +370,20 @@ Rules:
 
 | Method | Path | Auth |
 |---|---|---|
-| POST | `/drills` | public, rate-limited; returns sandbox token |
-| GET | `/incidents/{id}` · `/incidents/{id}/events?since=` | sandbox token or captain passcode |
-| POST | `/decisions/{id}` | sandbox token (own drill) or captain passcode |
-| POST | `/voice/session` | sandbox token; returns short-lived voice token |
-| POST | `/admin/replay` | captain passcode in `x-doorstep-passcode` (constant-time; 10 failures/hour per IP), `Idempotency-Key` required; caps: 2 per IP per 10 min, 10/day, 60 total; kill switch |
-| GET | `/evals/report` | public |
+| POST | `/drills` | public; `Idempotency-Key`; caps (per IP, everyone per 10 min, daily, total); kill switch; returns a sandbox token for that one drill |
+| POST | `/captain/session` | captain passcode (constant time; lockout checked first, 10 failures/hour per IP); returns a captain token |
+| GET | `/incidents/{id}` (`?since=<seq>`, `?view=report`) | `Authorization: Bearer` sandbox token (own drill only) or captain token |
+| POST | `/incidents/{id}/decisions/{decision_id}` | sandbox token (own drill) or captain token; kill switch; forwarded as the same `decision_response` event a Telegram tap becomes |
+| POST | `/voice/session` | sandbox token (own drill) or captain token; returns a 60 s presigned WebSocket URL with a single-use voice token |
+| POST | `/admin/replay` | captain passcode in `x-doorstep-passcode` (constant-time; 10 failures/hour per IP, checked first), `Idempotency-Key` required; caps: 2 per IP per 10 min, 10/day, 60 total; kill switch |
+| GET | `/evals-report.json` | public static file on CloudFront (Phase 6) |
 | POST | `/telegram/webhook` | `X-Telegram-Bot-Api-Secret-Token` (constant-time); `update_id` claimed once; taps forwarded to the incident's coordinator; kill switch |
 | POST | `/twilio/voice`, `/twilio/status` | Twilio signature validation |
-| POST | `/internal/checkin-result` | HMAC from voice bridge / worker |
 
-The dashboard polls events every 2 seconds. No WebSocket is needed for the board.
+The dashboard polls every 2 seconds while anything is moving, every 10 seconds once settled, and not
+at all while its tab is hidden. No WebSocket is needed for the board. (Amended in Phase 5: tokens
+are HMAC-signed with a label derived from the internal HMAC secret; the voice bridge reaches the
+coordinator by IAM-signed `InvokeAgentRuntime`, so `/internal/checkin-result` was never built.)
 
 ## 12. Evals (Strands Evals SDK)
 
@@ -418,18 +421,17 @@ Output goes to `evals/REPORT.md` (tables, before/after) and `evals/report.json` 
 
 The memorable element is the **door grid**. Each resident is a door tile laid out like the building floors and street. It fills in with its status as check-ins land. An urgent tile pulses once and stays marked. Everything around it stays quiet.
 
-Proposed tokens (review them before building, and revise anything that reads as a generic default):
-- **Colour:**
-  - Asphalt `#1F2A30` (ink)
-  - Concrete `#EEF1F2` (base)
-  - Shade `#D7E3E8` (surfaces)
-  - OK `#2F7D57`
-  - Check `#B7791F` (needs help / pending)
-  - Urgent `#B8322A`
+Tokens (revised in Phase 5: the first draft's Check `#B7791F` was 3.2:1 and OK `#2F7D57` 4.4:1 on
+Concrete, both below AA):
+- **Colour** (contrast on kerb): ink `#1C2328` (14.1), kerb `#F4F1EA` (base, warm pavement rather
+  than a cool dashboard grey), porch `#FFFDF8` (surfaces), muted `#4F4A44` (7.8), line `#6B6259`
+  (5.3), OK `#1F6B47` on `#DDEFE4` (5.4), needs help `#8A5300` on `#FBE7C2` (5.2), urgent white on
+  `#A3241C` (7.4), calling `#2B4C7E` (7.6), focus ring `#0B4F9C` 3 px with a 2 px kerb gap.
 
-  Check contrast against AA, and pair colour with an icon and label; never use colour alone.
+  Colour never carries meaning alone: each door state also has its own border (dashed, double,
+  left rail), fill pattern (hatched for needs help), icon and word.
 - **Type:** Atkinson Hyperlegible Next for everything. It was designed for low-vision readers, which suits the people this serves. Use tabular numerals for counters. No all-caps labels.
-- **Layout (captain view):** on mobile, the decisions inbox sits on top, then the door grid, then the timeline. On desktop, the door grid and map sit on the left and the resident panel on the right.
+- **Layout (captain view):** on mobile, the decisions strip sits on top, then the door grid, then the timeline. On desktop, the door grid sits on the left and the resident panel on the right. The map was cut in Phase 5: the grid is laid out as the building's floors and the streets, and a list view carries the same doors.
 - **Copy:** sentence case and plain verbs ("Run a drill", "Send Tom", "Mark as safe"). Errors say what happened and what to do. Empty states invite action.
 - **Accessibility:** keyboard access, visible focus, reduced motion respected, large touch targets.
 
@@ -439,16 +441,19 @@ Proposed tokens (review them before building, and revise anything that reads as 
   - 12 residents, 3-turn check-ins, Nova Micro personas, Nova 2 Lite agents.
   - **Measured cost: about $0.37 per drill** (Phase 2, `docs/COST.md`). The earlier $0.05 target
     assumed Nova Lite 1.0; Nova 2 Lite input is $0.33/1M tokens and is 90% of all spend.
-  - Limits: 1 drill per IP per 10 minutes; 30 drills per day globally; **and a cumulative cap for
-    the whole judging period**. A daily cap does not bound the total: 30/day for the 24 days from
-    Sep 14 to Oct 8 is about $266, which exceeds the AWS credits on hand and would land on a real
-    card mid-judging. Size the cumulative cap from the credits actually remaining (about 300
-    drills at the time of writing) and fail closed when it is reached.
-  - Browser voice: 3 minutes per session, 20 sessions per day. **Nova 2 Sonic's cost is not yet
-    known** — eight Phase 0 sessions produced no billable line item. Measure it on the first real
-    call in Phase 4 and size this cap from the measurement, not from the guess.
+  - Limits (Phase 5, SSM `/doorstep/caps`): 1 drill per IP per 10 minutes, 3 per 10 minutes for
+    everyone, **15 per day, 120 for the judging period**, failing closed. A refused request gives
+    back the counts it took. Worst case $5.70/day and $45.60 in total (`docs/COST.md`).
+  - Browser voice: 3 minutes per call, 4 per IP per hour, **15 per day, 120 in total**, a sandbox
+    or captain token required (measured ≤ $0.06 a call).
+  - Each visitor's drill is its own incident (`mode: sandbox`): its own DynamoDB partition and
+    AgentCore session, a token that names only that incident, Telegram forced off in both the
+    Lambda and the coordinator, Cedar's `sandbox_never_real_channels`, and a dialer that refuses
+    sandbox incidents. The visitor answers decisions as whoever each is addressed to, through the
+    unchanged `respond_to_decision`.
   - Kill switch in SSM.
-  - All caps return a friendly message and link to the demo video.
+  - All caps return a friendly message, a recorded drill ($0, a static snapshot of a real sandbox
+    run) and the demo video link (SSM `demo_video_url`, once it exists).
 - **Budget alarms:** $5, $15, $30 — note these track **gross usage before credits**, so they are a
   credit-burn meter, not a bill. A budget on *net* cost is the one that means real money. Tally
   costs in `docs/COST.md`.

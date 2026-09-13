@@ -100,7 +100,8 @@ The bot is in **webhook mode** (set 2026-09-12): taps go to the deployed `/teleg
 - `make cloud-drill ARGS=--auto-approve|--telegram` — 12-resident drill in AWS through `POST /admin/replay`
 - `make scan-logs` — search recent runtime/Lambda logs and spans for any SSM secret value (in memory) · `make poller ARGS=on|off`
 - `make evals` — run eval suites, write `evals/REPORT.md`
-- `make web` / `make web-deploy`
+- `make web` (dev server on :5173 against the deployed API) · `make web-test` · `make web-deploy` (build, S3, CloudFront) · `make web-export` (profile labels + Cedar/plain-English JSON) · `make web-recorded ARGS=<incident>` (recorded drill)
+- `make cap-test` — Gate 5: every drill/voice cap, the passcode lockout and the kill switch on the deployed API (`ARGS="--after-drill <id>"` spends $0) · `make keyboard-pass` (`ARGS=--live` starts one drill) · `make lighthouse`
 
 ## Repo layout
 

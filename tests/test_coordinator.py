@@ -223,3 +223,108 @@ def test_boot_id_is_per_process() -> None:
     assert len(coordinator_module.BOOT_ID) == 12
     assert json.dumps({"b": coordinator_module.BOOT_ID})
     assert DATA.exists()
+
+
+# --- Phase 5: the dashboard -----------------------------------------------------------------
+
+
+async def test_a_sandbox_start_ignores_every_channel_option_it_is_sent(aws, tmp_path: Path) -> None:
+    runs: list[dict[str, Any]] = []
+
+    class FakeRunner:
+        ctx = None
+
+        def __init__(self, **kwargs: Any) -> None:
+            runs.append(kwargs)
+
+        async def run(self) -> Any:
+            class Report:
+                all_settled, urgent_escalated, policy_violations, wall_seconds = True, [], 0, 1.0
+
+            return Report()
+
+    c = coordinator(tmp_path, runner_factory=FakeRunner, tracker=Tracker())
+    hostile = {
+        "type": "sandbox",
+        "telegram": True,
+        "auto_approve": True,
+        "timeout_seconds": 99999,
+        "voice_residents": ["r06", "r01", "r02"],
+    }
+    assert (await c.handle({"incident_id": "sandbox-x-1", "event": hostile}))["accepted"] is True
+    await c.drain()
+    (run,) = runs
+    assert run["mode"] == "sandbox"
+    assert run["auto_approve"] is False and run["timeout_seconds"] == 240.0
+    assert run["run_options"]["telegram"] is False
+    assert isinstance(run["notifier"], coordinator_module.RecordingNotifier)
+    assert run["voice_residents"] == ["r06"], "one voice call per visitor"
+
+
+async def test_a_dashboard_answer_and_a_telegram_tap_share_one_path(aws, tmp_path: Path) -> None:
+    """The Gate 3 pause, answered from the web in one process and from Telegram in another:
+    exactly one volunteer task, and the second channel is told it was already answered."""
+    make_ctx("sandbox", store=new_backend().for_incident("inc-test", SUBSET))
+    model = run_script(
+        ToolCall(
+            "assign_volunteer",
+            {
+                "resident_id": "r04",
+                "volunteer_id": "vol-tom",
+                "include_brief": True,
+                "reason": "Needs a ride to a cooling centre.",
+            },
+            "tu-web",
+        ),
+        final_text="assigned",
+    )
+    first = coordinator(tmp_path, model=model)
+    await first.handle(
+        {
+            "incident_id": "inc-test",
+            "event": {
+                "type": "checkin_result",
+                "resident_id": "r04",
+                "attempt_key": "a1",
+                "result": {"status": "NEEDS_HELP", "needs": ["ride"], "summary": "needs a ride"},
+            },
+        }
+    )
+    await first.drain()
+    (pending,) = new_backend().for_incident("inc-test", SUBSET).decisions("inc-test", "pending")
+
+    def web(subject: str) -> dict[str, Any]:
+        return {
+            "incident_id": "inc-test",
+            "event": {
+                "type": "decision_response",
+                "web": {"decision_id": pending.id, "option_id": "approve", "subject": subject},
+            },
+        }
+
+    second = coordinator(tmp_path, model=model)  # a new process
+    await second.handle(web("sandbox:someone-else"))
+    await second.drain()
+    assert new_backend().for_incident("inc-test", SUBSET).decision(pending.id).status == "pending"
+    await second.handle(web("sandbox:inc-test"))
+    await second.drain()
+
+    third = coordinator(tmp_path, model=model)
+    await third.handle(
+        {"incident_id": "inc-test", "event": tap("approve", decision=pending.id, update_id=9)}
+    )
+    await third.drain()
+
+    final = new_backend().for_incident("inc-test", SUBSET)
+    tasks = [m for m in final.messages("inc-test") if m.kind == "volunteer_task"]
+    assert len(tasks) == 1 and tasks[0].recipient == "vol-tom"
+    decision = final.decision(pending.id)
+    assert decision.status == "answered" and decision.responder == "captain:cap-maria"
+    outcomes = [
+        e.data.get("outcome")
+        for e in audit(new_backend())
+        if e.data.get("event") == "decision_response"
+    ]
+    assert outcomes == ["forbidden", "applied", "already_answered"]
+    sources = [e.data.get("source") for e in audit(new_backend()) if e.actor == "captain:cap-maria"]
+    assert "web" in sources and "telegram" not in sources

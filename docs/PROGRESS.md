@@ -1,8 +1,8 @@
 # Doorstep — progress log
 
-Current phase: **4 — Voice**: ✅ **complete, Gates 4a and 4b passed** (C6, 2026-09-13 01:08 PDT).
-Ready for Ansh to commit on `phase4` and say "go" for Phase 5.
-Next gate: **Gate 4a**
+Current phase: **5 — Dashboard + judge sandbox**: ✅ **complete, Gate 5 passed** (2026-09-13 11:20 PDT).
+Ready for Ansh to commit on `phase5` and say "go" for Phase 6.
+Next gate: **Gate 6**
 Time now vs plan: Phase 0 ran Fri Sep 11 00:00–12:35 PDT (planned Thu evening). Phase 1 ran Fri
 17:45–21:20 PDT, about 3.5 h of its 5 h box. Phase 2 started Sat 08:30 PDT and was committed
 before 11:27 PDT, when Phase 3 planning started: about 1.5 h ahead of the Sat 1 PM slot.
@@ -23,7 +23,7 @@ before 11:27 PDT, when Phase 3 planning started: about 1.5 h ahead of the Sat 1 
 | 3 | Cloud drill via AgentCore + Telegram webhook + traces | ✅ passed | **Deploy:** `make deploy` created stack `Doorstep` from nothing (118 s) and ran again green from a clean clone + this phase's diff (`make setup && make deploy`; the runtime image hashed identically). **Resume in the cloud:** `make cloud-restart-test ARGS="--delay 120"` 18/18 — paused in process A, `StopRuntimeSession`, a real-webhook tap resumed in process B from S3, exactly one volunteer task, two replays dropped at the webhook, a second tap `already_answered`, wrong secret 401. **Cloud drill with Telegram:** `make cloud-drill ARGS=--telegram` PASS on `drill-20260912-234122-d132`: 12/12 settled, r01 and r02 escalated, 0 violations, 8 taps from Ansh's phone through the webhook (7 as `captain:cap-maria`, 1 as `volunteer:vol-tom`), 117 s. **Traces:** 2,059 spans in 14 traces for that incident (`make trace`). **No secrets:** `make scan-logs` 0 matches for 17 values over 20,500 events. **Offline:** 277 tests. **Cost:** $5.31 gross / $0.00 net to date (Phase 3 ≈ $1.2 gross). | 2026-09-12 |
 | 4a | 3 browser check-ins | ✅ passed | **Three consecutive real browser calls by Ansh** (Chrome, mic, headphones) through the deployed path (`/voice/session` → presigned WebSocket → `doorstep_voice` runtime → Nova 2 Sonic → coordinator), incident `drill-20260913-034202-acd6`, on the final build: **Rose (r01) OK**, 4 answers, 2 barge-ins, result applied **2.2 s** after hang-up; **George (r10) NEEDS_HELP** (ride, cooling), 3 barge-ins, volunteer task raised, applied **1.5 s** after hang-up; **Evelyn (r09) URGENT mid-call**: the live backstop matched "dizzy and confused", **the captain's decision `dec-003` existed at 04:06:16.6, 6 s before hang-up at 04:06:22**, the line was held until it was out, final classification URGENT applied **1.2 s** after hang-up. Before these: Ansh's C2 call (Mei-Ling OK, 2.5 s) and three automated `make voice-e2e` calls (OK 1.5 s and 1.8 s; urgent paged 8.2 s before hang-up). `make check` 322 tests; `make scan-logs` 0 matches. Sonic ≈ $0.010–0.016 per call. | 2026-09-12 |
 | 4b | 2 real calls + mid-call escalation | ✅ passed | Real calls from the Twilio `doorstep` subaccount to Ansh's own allowlisted phone, through the `checkin_worker` dialer and the phone bridge (ngrok), Cedar allowing each only through the operator quiet-hours exception. **Call 1** `live-20260913-044054-c586`: Twilio `completed` 66 s, full protocol, OK, result applied 1.5 s after hang-up. **Call 2** `live-20260913-074003-405b` (on speaker, recorded): `completed` 68 s, full protocol, OK, RESOLVED. **Call 3** `live-20260913-080655-3cec` (Telegram on, recorded): "I feel dizzy and confused, I'm not sure what day it is". The live backstop paged at 08:07:35.0, **the captain's Telegram message was sent at 08:07:36.7, and Twilio ended the call at 08:07:52: 15.3 s before hang-up**. URGENT, ESCALATED, final classification applied 1.1 s after hang-up. Before these: no-ring rehearsals through the deployed chain, where Cedar denied non-allowlisted residents in the cloud. `make check` 354 tests. | 2026-09-13 |
-| 5 | Judge flow < 4 min, Lighthouse a11y ≥ 90 | ☐ | | |
+| 5 | Judge flow < 4 min, Lighthouse a11y ≥ 90 | ✅ passed | **Lighthouse accessibility 100** on all 7 pages, desktop and mobile (`make lighthouse`, deployed site). **Keyboard only** in real Chrome (puppeteer, Tab/Shift+Tab/Enter/Space, no mouse): recorded 19/19, **live 22/22** on the deployed site: drill started by Enter, first decision at 25 s, answered by keyboard at 27 s, report at 28 s, every focus stop ringed, 0 console errors (`make keyboard-pass ARGS=--live`). **Caps** 14/14 on the deployed API (`make cap-test`): per-IP, everyone-per-10-min, daily and total drill caps, voice per-IP/daily/total, no-token 401, passcode lockout (right passcode refused while locked), kill switch on drills/voice/answers; counters restored. **Judge path by pointer** on the deployed site (in-app browser): drill 5.4 s after the click, synthetic voice call for Mei-Ling paged the captain 21 s before hang-up, two dashboard answers applied as `captain:cap-maria` / `volunteer:vol-tom` with `source: web`, report "all 12 in 1 min 30 s", 0 console errors. `make check` 383 tests; `make web-test` 9. **Human runs (Ansh, fresh incognito, own voice, stopwatch from opening the URL to the report headline): laptop Chrome 1:39** (`sandbox-20260913-181317-c0e82c`: call began 10.8 s after the drill started, captain paged 33.5 s, call ended 48.1 s so the page was out 14.6 s before hang-up, all 12 reached 47.6 s, his dashboard answer applied 77.7 s; 0 console errors) and **phone Safari on cellular 1:07** (`sandbox-20260913-181744-7bf558`: call 8.1 s, paged 30.2 s, ended 44.4 s so 14.2 s before hang-up, all 12 reached 47.4 s, answer applied 54.4 s). Both answers recorded as `captain:cap-maria` with `source: web`. | 2026-09-13 |
 | 6 | Evals targets, CI green, clean-clone setup | ☐ | | |
 | 7 | Submitted | ☐ | | |
 
@@ -38,6 +38,86 @@ before 11:27 PDT, when Phase 3 planning started: about 1.5 h ahead of the Sat 1 
 | 5 | Telegram ping + button | ✅ PASS 2026-09-11 | Bot `@doorstep_agent_bot`; captain chat ID from the `--whoami` step. Message with 3 inline buttons sent; the `I'm handling it` callback arrived 7.5 s later via long polling, was answered, and the message was edited. First run timed out at 120 s with no tap; second run passed. |
 
 ## Log (newest first)
+
+### 2026-09-13 about 11:20 PDT — Gate 5 passed with Ansh's two human runs
+- Laptop (Chrome incognito) 1:39 and phone (Safari private, cellular) 1:07 from opening the URL
+  to reading the report, both well under 4 minutes; details in the Gates table.
+- Found for Phase 6 (not fixed, voice behaviour rather than dashboard):
+  1. On the phone run Nova 2 Sonic said the 911 line again and again until Ansh spoke. The
+     transcript shows "I'm getting someone to check on you right now. If you feel very unwell,
+     please call 911. Someone will be sent to check on you right away. If you feel very unwell,
+     please call 911." The page was already out (30.2 s); the call only ended at 44.4 s when the
+     model finally called `end_call` after "okay thank you". So the bridge was not holding the
+     line; the model delays `end_call` after the red-flag line. Two prompt paths both ask for a
+     reassurance plus 911 reminder (`checkin_text.py` lines ~119 and ~134), which invites the
+     repeat. Candidate fix: once the red-flag line has been spoken and the page is out, the
+     bridge closes the call deterministically after that turn.
+  2. Both runs again said "someone will come by right away" (the known near-promise of timing).
+
+### 2026-09-13 about 08:20 PDT — Phase 5 built and deployed; automated Gate 5 half passes
+- Ansh's call (after the plan): no map ("add it only if it makes the project win"; the door grid
+  already lays out the building and streets), save money, do not commit, keep going until a
+  human step.
+- Built:
+  - **Sandbox API** (`api/doorstep_api/dashboard.py`, `access.py`, `snapshot.py`):
+    `POST /drills`, `POST /captain/session`, `GET /incidents/{id}` (`?since=`, `?view=report`),
+    `POST /incidents/{id}/decisions/{decision_id}`. HMAC access tokens (label-derived key from
+    the internal secret): a sandbox token names one incident; a captain token comes from the
+    passcode. `/voice/session` now requires one of them.
+  - **One decision path.** The dashboard's answer is forwarded as the same `decision_response`
+    event a Telegram tap becomes; the coordinator calls `respond_to_decision` with
+    `Responder("web", subject)`. `respond_to_decision`, `authorize`, `claim_decision` and the
+    resume are unchanged; only `resolve_responder` learned the web subjects (`captain` → the org
+    captain; `sandbox:<incident>` → the addressee, only on that sandbox incident). A Telegram
+    edit follows a web answer so the captain's phone never shows live buttons for a settled
+    decision.
+  - **Sandbox mode** end to end: `DrillRunner(mode=...)`, coordinator `sandbox` event that ignores
+    every channel option it is sent (one voice resident, no Telegram, no simulated captain).
+  - **Dashboard** (`web/`, React 19 + Vite 8 + Tailwind 4, Atkinson Hyperlegible Next self-hosted,
+    no router or map library): live board with the door grid (floors of Juniper Court, then the
+    streets; container-query columns; list view), counter strip that is also the filter,
+    resident panel with the step-by-step trail, the "answer as Mei-Ling" voice call, decisions
+    inbox, policies (Cedar beside plain English and the tests that prove each rule), report,
+    evidence, home, captain mode, recorded drill (a real sandbox run as static JSON, $0).
+  - **Infra:** private S3 + CloudFront (OAC, PriceClass 100), `doorstep-dashboard` Lambda
+    (read-only on incidents; writes only its own counters), four routes with throttles, CORS
+    for the site only. `make web | web-test | web-deploy | web-export | web-recorded | cap-test |
+    keyboard-pass | lighthouse`.
+  - Site: https://d3fia1jq6liv5t.cloudfront.net
+- Found and fixed on the way:
+  1. SPEC §13 tokens failed AA (Check 3.2:1, OK 4.4:1 on Concrete). Revised tokens in SPEC §13.
+  2. **Passcode lockout did not lock** (since Phase 3): wrong guesses were counted, but the
+     passcode was compared before the count was read, so a locked-out address still got in
+     with the right guess. Both `/admin/replay` and `/captain/session` now read the counter
+     first (tests: the right passcode is refused while locked). The 32-character passcode kept
+     this theoretical.
+  3. The phone-number mask also mangled incident ids (`sandbox-[number]ad64a`); now matches phone
+     shapes only, with id and timestamp cases in the test.
+  4. A Phase 2 test assumed the dashboard would send a Telegram chat id as its identity; a
+     browser-supplied chat id is not an identity, so the test now proves it is refused.
+  5. Throttles lowered where nobody needs them: Telegram webhook 10 → 2 rps, stage default
+     5 → 2 rps (`docs/COST.md` has the flood arithmetic).
+  6. The in-app browser pane's key presses do not activate native buttons (a plain injected
+     `<button>` did not fire either), so the keyboard pass runs in real Chrome via puppeteer.
+- Verified how: see the Gate 5 row. Costs: 2 sandbox drills + 1 synthetic voice call ≈ $0.77.
+- Not done / known rough edges: see "Phase 5 rough edges" below.
+
+
+### 2026-09-13 about 02:30 PDT — Phase 5 plan proposed (no code)
+- Gate 4 (4a and 4b) confirmed passed. Ansh's schedule change: submit Sunday night; video recorded
+  at 19:30 with whatever exists; screens built in video order (board, inbox, policies, report,
+  evidence, home); the map is the designated cut.
+- Found while planning, before any code:
+  1. SPEC §13's tokens fail AA: Check `#B7791F` is 3.21:1 on Concrete and 2.78:1 on Shade; OK
+     `#2F7D57` is 4.41:1 on Concrete and 3.83:1 on Shade. Revised tokens proposed.
+  2. `resolve_responder` only maps Telegram chat ids, so a web tap cannot yet reach a roster
+     member; `respond_to_decision` and `authorize` can stay untouched if only the resolver learns
+     a verified web subject.
+  3. `POST /voice/session` takes no sandbox token today (SPEC §11 says it should).
+  4. `DrillRunner` hard-codes `mode="drill"`; sandbox mode needs a parameter.
+  5. Read routes are bounded only by the stage throttle (5 rps / burst 10), which is the one
+     spend a visitor can sustain without a count.
+- Next: Ansh reviews tokens, wireframes, caps and the commit question, then says "go".
 
 ### 2026-09-13 about 01:10 PDT — Gate 4b passed (C4, C5, C6); what went wrong on the way
 - Three real calls (details in the Gates table). Call 1 on the handset, calls 2 and 3 on speaker
@@ -708,7 +788,30 @@ before 11:27 PDT, when Phase 3 planning started: about 1.5 h ahead of the Sat 1 
 | 2026-09-12 | Browser voice runs on AgentCore Runtime's WebSocket (`/ws`, a separate `doorstep_voice` runtime from the same image) reached by a 60 s SigV4 presigned URL; the phone bridge is the same code run locally behind ngrok; no EC2 (Ansh: "no more money") | No standing EC2 cost (~$12/month) and no plain-HTTP origin hop; AgentCore bills only while a session runs. Twilio cannot present SigV4 (no query string, no headers), so it needs its own host | EC2 t4g.small + CloudFront (PLAN) |
 | 2026-09-12 | Voice processes send raw attempts and mid-call urgent events to the coordinator with IAM-signed `InvokeAgentRuntime`, and the coordinator classifies | No shared secret, one hop fewer; the deterministic layers run in one place for text and voice | HMAC-signed `/internal/checkin-result` Lambda (PLAN) |
 | 2026-09-12 | Ansh commits Phase 4 himself at the end; checkpoints leave the working tree ready | Standing rule (CLAUDE.md) | Claude commits at C3/C6 |
+| 2026-09-13 | Phase 5: no map; the door grid is laid out as the building's floors and the streets, with a list view | Ansh: add the map only if it makes the project win. A Leaflet map adds a library, OSM tile-policy exposure and a second place to keep accessible, and says less than the grid | Leaflet + OpenStreetMap (PLAN) |
+| 2026-09-13 | Sandbox caps 1/IP/10 min, 3 everyone/10 min, 15/day, 120 total; voice 15/day, 120 total | Saves money: $52.80 hard ceiling on models for the judging period vs SPEC's 30/day | SPEC §14's 30/day with no total |
+| 2026-09-13 | Dashboard tokens are HMAC, keyed by a label-derived key from `internal_hmac_secret`; no new secret | No human step, and a voice token can never pass as a dashboard token (different label) | A new SSM secret (a `.env` + `secrets-push` step) |
+| 2026-09-13 | The web identity is resolved in `resolve_responder`; `respond_to_decision` is unchanged | The dashboard and Telegram share identity, idempotency, the claim and the resume by construction | A separate web answer path |
+| 2026-09-13 | The API stays on its own domain; the site is on CloudFront | Through CloudFront every request would come from an edge IP and the per-IP limits would count the wrong thing | `/api/*` behind the same distribution |
+| 2026-09-13 | Keyboard pass and Lighthouse are scripts (`make keyboard-pass`, `make lighthouse`) | Repeatable Gate 5 evidence; the in-app pane cannot activate buttons from the keyboard | a manual pass |
 | 2026-09-11 | The active profile and the replay fixture are configuration (`DOORSTEP_PROFILE`, `DOORSTEP_ALERT_FIXTURE` in `config.py`); a test forbids hazard words anywhere else in the agent package | Makes "nothing hazard-specific is hard-coded" checkable | a default in the drill runner (caught by the guard) |
+
+## Phase 5 rough edges (avoid on camera, or fix in Phase 6)
+
+- Model-written option labels appear as-is, e.g. "door-knock" and "nearest volunteer" beside
+  "I'm handling it" (the dispatcher sometimes adds its own options). Same on Telegram.
+- A drill raises many decisions at once (6–7 in about 90 s), so the inbox reads as a wall. The
+  first card is the one to tap on camera.
+- Nova 2 Sonic still says "Someone will be sent to check on you right away" after a red flag
+  (a near-promise of timing; Phase 6 evals item since Gate 4a), and may repeat the 911 line until
+  the resident speaks: on camera, answer "okay, thank you" as soon as it finishes the first time.
+- The report's "reached everyone in 1 min 30 s" counts a case as reached when its first result
+  lands; decisions can still be waiting. The report says how many are waiting.
+- Evidence shows Gates 1–4 only; eval results appear when Phase 6 writes `web/public/evals-report.json`.
+- Policy refusals are rare in a sandbox drill (0 in both runs), so "Refused in your drill" is
+  usually empty; each rule lists the named Cedar tests that prove it instead.
+- Voice links today: the UTC day's counter was already at 10 of 15 after Phase 4 and this phase
+  (it resets at 17:00 PDT).
 
 ## Second-number swap (do before the video and submission)
 
@@ -762,6 +865,8 @@ decision").
 - [ ] Note: the bot is in webhook mode now; run `make telegram-webhook ARGS=delete` before any local `make telegram-drill`, and `ARGS=set` afterwards
 - [ ] **Before submitting: swap in a real second Telegram account.** See "Second-number swap"
       below — it is one `.env` line, and it makes the role check visibly real in the demo.
+- [x] **Phase 5 Gate 5 (human half):** laptop 1:39, phone 1:07 (2026-09-13)
+- [ ] Phase 5: review the working tree on `phase5` and commit it yourself
 - [ ] Blog post 1 (Sat AM) · [ ] Blog post 2 (Sun PM) · [ ] Blog post 3 (Mon AM)
 - [ ] Volunteer Telegram account ready
 - [ ] Devpost draft created Saturday

@@ -87,6 +87,7 @@
         try {
           call = await startCall({
             apiUrl: $("api").value,
+            token: params.get("token") || "",
             incidentId: $("incident").value.trim(),
             residentId: $("resident").value,
             on: {
