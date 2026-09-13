@@ -167,7 +167,7 @@ class InMemoryStore:
             raise NotFound(f"case {incident_id}/{resident_id}") from e
 
     def cases(self, incident_id: str) -> list[ResidentCase]:
-        return [c for (inc, _), c in self._cases.items() if inc == incident_id]
+        return [c for (inc, _), c in list(self._cases.items()) if inc == incident_id]
 
     def save_decision(self, decision: Decision) -> None:
         self._decisions[decision.id] = decision
@@ -181,7 +181,7 @@ class InMemoryStore:
     def decisions(self, incident_id: str, status: str | None = None) -> list[Decision]:
         return [
             d
-            for d in self._decisions.values()
+            for d in list(self._decisions.values())
             if d.incident_id == incident_id and (status is None or d.status == status)
         ]
 
@@ -196,7 +196,7 @@ class InMemoryStore:
         return next(
             (
                 d
-                for d in self._decisions.values()
+                for d in list(self._decisions.values())
                 if d.incident_id == incident_id and d.tool_use_id == tool_use_id
             ),
             None,
@@ -213,8 +213,10 @@ class InMemoryStore:
         return self._allocate(incident_id, "evt", len(self._events.get(incident_id, [])))
 
     def allocate(self, incident_id: str, counter: str) -> int:
+        # `list(...)` snapshots the values in one step: tool bodies run in threads and may save a
+        # decision while this counts (found with tight thread switching, 2026-09-13).
         existing = (
-            len([d for d in self._decisions.values() if d.incident_id == incident_id])
+            len([d for d in list(self._decisions.values()) if d.incident_id == incident_id])
             if counter == "dec"
             else 0
         )

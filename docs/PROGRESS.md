@@ -39,6 +39,29 @@ before 11:27 PDT, when Phase 3 planning started: about 1.5 h ahead of the Sat 1 
 
 ## Log (newest first)
 
+### 2026-09-13 afternoon — CI failure after the Phase 5 push: three thread races, two of them real
+- CI failed 1 of 383: `test_ids_are_unique_under_threads[dynamo]` (51 unique ids of 60). Not
+  Phase 5 code; the test dates from Phase 3 and passed 30/30 on this Mac.
+- Reproduced 10/10 by forcing thread switches (`sys.setswitchinterval(1e-6)`), which also
+  failed two more threaded tests. Three separate causes:
+  1. **moto (test fake):** its DynamoDB backend reads, copies and writes an item with no lock, so
+     two threads both create a new counter at 1. Real DynamoDB applies each request atomically.
+     Fix: `tests/conftest.py` serializes moto's backend requests (our code still runs threaded).
+  2. **botocore (real bug, deployed code):** `client.exceptions` is built lazily without a lock;
+     two threads touching it first get different exception classes, so a lost conditional write
+     escaped `except client.exceptions.ConditionalCheckFailedException` as a crash instead of
+     `False`/`StaleWrite`. Could happen in the coordinator, where tool bodies share a client in
+     threads. Fix: match the error code (`conditional_failed`) in `store_dynamo.py` (2 places)
+     and `api/doorstep_api/common.py` (3 places).
+  3. **InMemoryStore (real bug, local drills):** counted decisions by iterating the live dict
+     while another thread saved one ("dictionary changed size during iteration"). Fix: snapshot
+     with `list(...)` in `allocate`, `cases`, `decisions` and the tool-use lookup.
+- The four threaded store tests now run with tight switching every time, so these races fail
+  on every run instead of only on a slow runner.
+- Verified how: store contract 0/15 failing runs under tight switching (was 11/15); full suite
+  3 × 383 passed CI-style (no AWS profile, no `.env`); ruff clean. Deployed (45 s): captain
+  session 201, unauthenticated read 401, site 200.
+
 ### 2026-09-13 about 11:20 PDT — Gate 5 passed with Ansh's two human runs
 - Laptop (Chrome incognito) 1:39 and phone (Safari private, cellular) 1:07 from opening the URL
   to reading the report, both well under 4 minutes; details in the Gates table.

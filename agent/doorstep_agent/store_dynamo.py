@@ -34,6 +34,7 @@ from pathlib import Path
 from typing import Any, TypeVar
 
 import boto3
+from botocore.exceptions import ClientError
 from pydantic import BaseModel
 
 from .models import (
@@ -48,6 +49,18 @@ from .models import (
     Volunteer,
 )
 from .store import NotFound
+
+
+def conditional_failed(exc: ClientError) -> bool:
+    """True if a DynamoDB write was refused by its condition.
+
+    Matched on the error code, never on `client.exceptions.ConditionalCheckFailedException`:
+    botocore builds that class lazily and without a lock, so two threads touching it first can
+    each get their own class, and one thread's `except` then misses the other's exception (found
+    in CI on 2026-09-13; reproduced with `sys.setswitchinterval(1e-6)`).
+    """
+    return exc.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException"
+
 
 CLAIM_TTL_SECONDS = 14 * 24 * 3600
 _MAX_SEQ = "99999999"
@@ -167,7 +180,9 @@ class DynamoBackend:
                 kwargs["ExpressionAttributeValues"] = {":v": _n(seen)}
             try:
                 self.client.put_item(**kwargs)
-            except self.client.exceptions.ConditionalCheckFailedException as exc:
+            except ClientError as exc:
+                if not conditional_failed(exc):
+                    raise
                 raise StaleWrite(
                     f"{key[0]} {key[1]} was changed by another writer (this process saw "
                     f"version {seen})"
@@ -431,7 +446,9 @@ class DynamoBackend:
                 ConditionExpression="attribute_not_exists(PK)",
             )
             return True
-        except self.client.exceptions.ConditionalCheckFailedException:
+        except ClientError as exc:
+            if not conditional_failed(exc):
+                raise
             return False
 
 

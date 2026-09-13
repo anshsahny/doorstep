@@ -13,11 +13,18 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import boto3
+from botocore.exceptions import ClientError
 
 PREFIX = os.getenv("DOORSTEP_SSM_PREFIX", "/doorstep")
 INCIDENT_ID = re.compile(r"^[a-z0-9][a-z0-9-]{2,60}$")
 _E164 = re.compile(r"^\+[1-9][0-9]{7,14}$")
 CLAIM_TTL_SECONDS = 14 * 24 * 3600
+
+
+def conditional_failed(exc: ClientError) -> bool:
+    """Keep in step with `doorstep_agent.store_dynamo.conditional_failed`: match the error code,
+    never the lazily built (and not thread-safe) `client.exceptions` class."""
+    return exc.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException"
 
 
 def runtime_session_id(incident_id: str) -> str:
@@ -140,7 +147,9 @@ class Deps:
                 TableName=self.table, Item=item, ConditionExpression="attribute_not_exists(PK)"
             )
             return True
-        except self.dynamodb.exceptions.ConditionalCheckFailedException:
+        except ClientError as exc:
+            if not conditional_failed(exc):
+                raise
             return False
 
     def claimed(self, key: str) -> dict[str, str]:
@@ -172,7 +181,9 @@ class Deps:
                 },
             )
             return True
-        except self.dynamodb.exceptions.ConditionalCheckFailedException:
+        except ClientError as exc:
+            if not conditional_failed(exc):
+                raise
             return False
 
     def reached(self, key: str, limit: int) -> bool:
@@ -194,7 +205,9 @@ class Deps:
                 ConditionExpression="n > :zero",
                 ExpressionAttributeValues={":minus": {"N": "-1"}, ":zero": {"N": "0"}},
             )
-        except self.dynamodb.exceptions.ConditionalCheckFailedException:
+        except ClientError as exc:
+            if not conditional_failed(exc):
+                raise
             pass
 
     # --- the coordinator ---

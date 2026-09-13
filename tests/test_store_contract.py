@@ -8,6 +8,8 @@ parts in-memory storage gave for free (shared records) and the parts it only got
 
 from __future__ import annotations
 
+import sys
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 
@@ -94,6 +96,18 @@ def test_a_held_record_sees_changes_made_through_the_store(ctx: RunContext) -> N
     assert ctx.store.case(ctx.incident_id, "r01").state == CaseState.RESOLVED
 
 
+@pytest.fixture
+def tight_switching() -> Iterator[None]:
+    """Switch threads almost every bytecode, so races show up on every run, not just on a slow CI
+    runner. Found two that way on 2026-09-13: moto's unlocked writes, and botocore's lazily built
+    exception classes letting a lost conditional write escape as a crash."""
+    before = sys.getswitchinterval()
+    sys.setswitchinterval(1e-6)
+    yield
+    sys.setswitchinterval(before)
+
+
+@pytest.mark.usefixtures("tight_switching")
 def test_ids_are_unique_under_threads(ctx: RunContext) -> None:
     with ThreadPoolExecutor(12) as pool:
         seqs = list(pool.map(lambda _: ctx.store.next_seq(ctx.incident_id), range(60)))
@@ -102,6 +116,7 @@ def test_ids_are_unique_under_threads(ctx: RunContext) -> None:
     assert len(set(decs)) == 60
 
 
+@pytest.mark.usefixtures("tight_switching")
 def test_concurrent_tool_bodies_never_share_a_decision_id(ctx: RunContext) -> None:
     """The Phase 2 counter was `len(decisions)+1`; Strands runs tool bodies in threads."""
     with ThreadPoolExecutor(8) as pool:
@@ -125,6 +140,7 @@ def test_concurrent_tool_bodies_never_share_a_decision_id(ctx: RunContext) -> No
     assert len(ctx.store.decisions(ctx.incident_id)) == 16
 
 
+@pytest.mark.usefixtures("tight_switching")
 def test_exactly_one_of_many_racing_claims_wins(ctx: RunContext) -> None:
     decision = urgent_decision(ctx)
     now = ctx.clock.now()
@@ -143,6 +159,7 @@ def test_exactly_one_of_many_racing_claims_wins(ctx: RunContext) -> None:
     assert ctx.store.decision(decision.id).responder == winners[0].responder
 
 
+@pytest.mark.usefixtures("tight_switching")
 def test_a_claim_key_is_granted_once(ctx: RunContext) -> None:
     with ThreadPoolExecutor(8) as pool:
         granted = list(pool.map(lambda _: ctx.store.claim("DELIVERY#x"), range(16)))
