@@ -1,0 +1,35 @@
+{
+  "_note": "Gate results from docs/PROGRESS.md. Update when a gate passes; evals arrive in Phase 6 (public/evals-report.json).",
+  "gates": [
+    {
+      "phase": "1",
+      "title": "Twelve simulated neighbours, locally",
+      "result": "12 of 12 cases settled with the right classification; both hidden-urgent residents escalated; 0 policy violations; 53.6 s.",
+      "how": "make local-drill, 158 unit tests including 29 Cedar cases and a 300-case backstop property test."
+    },
+    {
+      "phase": "2",
+      "title": "A person's answer survives a restart",
+      "result": "An interrupt raised in one process was answered in another; the volunteer task was sent exactly once; a second tap was recognised as already answered.",
+      "how": "tests/test_restart_resume.py, plus 12 real Telegram taps over 8 decisions (one decision tapped five times)."
+    },
+    {
+      "phase": "3",
+      "title": "The whole drill in the cloud",
+      "result": "12 of 12 settled on Amazon Bedrock AgentCore Runtime; paused in one runtime process, resumed in another by a real Telegram tap; 2,059 trace spans; 0 secrets in 20,500 log events.",
+      "how": "make cloud-restart-test (18/18), make cloud-drill with Telegram, make scan-logs."
+    },
+    {
+      "phase": "4",
+      "title": "Real voice, browser and phone",
+      "result": "Three consecutive browser calls and three real phone calls on Nova 2 Sonic. When a resident said \"I feel dizzy and confused\", the captain's Telegram page was sent 15.3 s before the call ended.",
+      "how": "Deployed voice runtime and a Twilio subaccount calling the operator's own allowlisted phone; Cedar refused every non-allowlisted resident."
+    },
+    {
+      "phase": "5",
+      "title": "A stranger can try it in under four minutes",
+      "result": "Fresh private browsers, real voice: laptop 1 min 39 s and phone 1 min 07 s from opening the site to reading the report, including a voice call that paged the captain about 14 s before hang-up and a decision answered on the dashboard.",
+      "how": "Lighthouse accessibility 100 on every page (desktop and mobile), a keyboard-only pass in real Chrome, and a test of every cost cap and the kill switch against the live API."
+    }
+  ]
+}

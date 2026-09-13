@@ -1,0 +1,209 @@
+@import "@fontsource/atkinson-hyperlegible-next/400.css";
+@import "@fontsource/atkinson-hyperlegible-next/700.css";
+@import "@fontsource/atkinson-hyperlegible-next/400-italic.css";
+@import "tailwindcss";
+
+/*
+  Doorstep tokens (SPEC §13, revised for AA in Phase 5; contrast ratios are listed there).
+  Kerb and porch are warm, sun-bleached pavement and a lit doorway: less glare than white, and
+  not the cool grey of a default dashboard. Status is never colour alone: every state also has
+  its own border, fill pattern, icon and word.
+*/
+@theme {
+  --font-sans: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", system-ui, -apple-system,
+    "Segoe UI", Roboto, sans-serif;
+
+  --color-ink: #1c2328;
+  --color-kerb: #f4f1ea;
+  --color-porch: #fffdf8;
+  --color-muted: #4f4a44;
+  --color-line: #6b6259;
+  --color-faint: #e6e1d6;
+
+  --color-ok: #1f6b47;
+  --color-ok-bg: #ddefe4;
+  --color-check: #8a5300;
+  --color-check-bg: #fbe7c2;
+  --color-urgent: #a3241c;
+  --color-urgent-bg: #f9dad6;
+  --color-calling: #2b4c7e;
+  --color-calling-bg: #dfe8f5;
+  --color-focus: #0b4f9c;
+
+  --text-base: 1.125rem;
+  --text-base--line-height: 1.55;
+  --text-lg: 1.375rem;
+  --text-lg--line-height: 1.4;
+  --text-xl: 1.75rem;
+  --text-xl--line-height: 1.25;
+  --text-2xl: 2.25rem;
+  --text-2xl--line-height: 1.15;
+  --text-sm: 1rem;
+  --text-sm--line-height: 1.45;
+}
+
+@layer base {
+  html {
+    background: var(--color-kerb);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 100%;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+    min-height: 100dvh;
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px var(--color-kerb);
+    border-radius: 4px;
+  }
+  /* Headings receive focus only from code (after navigation or opening a panel) so a screen
+     reader lands there; they are not Tab stops and need no ring. */
+  h1[tabindex="-1"]:focus,
+  h2[tabindex="-1"]:focus {
+    outline: none;
+    box-shadow: none;
+  }
+  a {
+    color: var(--color-calling);
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Door tiles ----------------------------------------------------------------------------- */
+
+.door {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.15rem;
+  min-height: 7.5rem;
+  padding: 0.55rem 0.6rem 0.6rem;
+  text-align: left;
+  background: var(--color-porch);
+  color: var(--color-ink);
+  border: 2px solid var(--color-line);
+  border-radius: 0.35rem 0.35rem 0.15rem 0.15rem;
+  cursor: pointer;
+  transition: transform 120ms ease-out;
+}
+.door:hover {
+  transform: translateY(-1px);
+}
+.door[aria-pressed="true"] {
+  box-shadow:
+    0 0 0 3px var(--color-kerb),
+    0 0 0 6px var(--color-ink);
+}
+/* the knob: a door, not a card */
+.door::after {
+  content: "";
+  position: absolute;
+  right: 0.5rem;
+  top: 55%;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.35;
+}
+.door-not_called {
+  border-style: dashed;
+  background: var(--color-kerb);
+  color: var(--color-muted);
+}
+.door-calling {
+  border-color: var(--color-calling);
+  border-left-width: 8px;
+  background: var(--color-calling-bg);
+}
+.door-your_call {
+  border-color: var(--color-calling);
+  border-width: 3px;
+  background: var(--color-calling-bg);
+}
+.door-ok {
+  border-color: var(--color-ok);
+  background: var(--color-ok-bg);
+}
+.door-needs_help {
+  border-color: var(--color-check);
+  background: repeating-linear-gradient(
+    135deg,
+    var(--color-check-bg) 0 10px,
+    #f6dcae 10px 13px
+  );
+}
+.door-no_answer {
+  border-color: var(--color-ink);
+  border-style: dashed;
+  border-width: 3px;
+  background: var(--color-porch);
+}
+.door-urgent {
+  border: 5px double var(--color-porch);
+  outline: 3px solid var(--color-urgent);
+  outline-offset: -1px;
+  background: var(--color-urgent);
+  color: #fff;
+}
+.door-urgent::after {
+  opacity: 0.7;
+}
+.door-urgent:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
+}
+.door-dimmed {
+  opacity: 0.35;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .door-urgent.door-new {
+    animation: door-knock 900ms ease-out 1;
+  }
+  @keyframes door-knock {
+    0% {
+      box-shadow: 0 0 0 0 rgb(163 36 28 / 0.65);
+    }
+    60% {
+      box-shadow: 0 0 0 16px rgb(163 36 28 / 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgb(163 36 28 / 0);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.vacant {
+  min-height: 7.5rem;
+  border: 2px solid var(--color-faint);
+  border-radius: 0.35rem 0.35rem 0.15rem 0.15rem;
+  background:
+    linear-gradient(var(--color-faint), var(--color-faint)) center 55% / 0.45rem 0.45rem no-repeat;
+}

@@ -41,6 +41,10 @@ def handler(event: dict[str, Any], context: Any = None, deps: common.Deps | None
 
     hour = now.strftime("%Y%m%d%H")
     failures = f"RATE#passfail#{ip}#{hour}"
+    # Checked before the passcode, so a locked-out address learns nothing, right guess included.
+    if deps.reached(failures, limits["passcode_failures_per_hour"]):
+        log(msg="replay refused", reason="passcode lockout")
+        return response(429, {"error": "Too many tries. Please wait an hour."})
     if not same_secret(header(event, "x-doorstep-passcode"), deps.param("captain_passcode")):
         counted = deps.count(failures, limit=limits["passcode_failures_per_hour"], ttl_seconds=7200)
         log(msg="replay refused", reason="passcode", limited=not counted)

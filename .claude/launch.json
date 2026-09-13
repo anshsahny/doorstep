@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "/opt/homebrew/opt/node@22/bin/node",
+      "runtimeArgs": ["web/node_modules/vite/bin/vite.js", "web", "--port", "5173", "--strictPort"],
+      "port": 5173
+    }
+  ]
+}

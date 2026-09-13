@@ -63,17 +63,64 @@ maximum-length 3-minute browser call**, all in.
   single-use token claimed before Nova is opened. A replayed or forged link costs a WebSocket
   accept and a DynamoDB read; a connection without a valid SigV4 signature is refused by AWS
   before our code runs ($0).
-- Hard limits: 3 minutes per call, 25 s of silence ends it, 20 links per day for everyone, 150
-  for the whole judging period, kill switch checked when the link is issued and when the call
+- Hard limits: 3 minutes per call, 25 s of silence ends it, 15 links per day for everyone, 120
+  for the whole judging period (lowered from 20/150 in Phase 5), kill switch checked when the link is issued and when the call
   connects. Per-IP: `voice_per_ip_per_hour` = 4 (raised to 10 for Phase 4 testing, reset 2026-09-13).
-- **Worst case: 20 × $0.06 = $1.20/day; 150 calls in total ≈ $9 for the judging period.**
+- **Worst case: 15 × $0.06 = $0.90/day; 120 calls in total ≈ $7.20 for the judging period.**
   Rotating IPs does not change that: the daily and total caps are global. The one thing an
-  attacker can do is use up the day's 20 links so judges see the "limit reached" message.
+  attacker can do is use up the day's 15 links so judges see the "limit reached" message.
 - Real phone calls and Telegram messages: $0. Browser tokens are refused for live incidents,
   and the sandbox never reaches a real channel (Cedar forbid + code checks).
 
 Standing cost of voice: $0 idle (the `doorstep_voice` runtime bills only while a call is
 connected; one more Lambda and route cost nothing at rest). No EC2.
+
+## Phase 5: the public sandbox — what a malicious visitor can cost (2026-09-13)
+
+Unit prices from the AWS Price List API (us-east-1, 2026-09-13): HTTP API $1.00 per million
+requests; Lambda arm64 $0.0000133334 per GB-second and $0.20 per million requests; DynamoDB
+on-demand $0.125 per million read request units and $0.625 per million write request units.
+Sandbox drill **$0.38** and browser voice call **≤ $0.06** as measured above.
+
+**Counted paths: a hard ceiling that no number of IP addresses can raise** (SSM `/doorstep/caps`,
+checked narrowest first, a refused request gives back the counts it took, all fail closed):
+
+| Path | Per IP | Everyone | Per day | Judging period | Worst day | Worst total |
+|---|---|---|---|---|---|---|
+| `POST /drills` (12-resident sandbox drill) | 1 per 10 min | 3 per 10 min | **15** | **120** | $5.70 | **$45.60** |
+| `POST /voice/session` (Nova 2 Sonic, 3 min max) | 4 per hour | – | **15** | **120** | $0.90 | **$7.20** |
+| `POST /admin/replay` (passcode only; Ansh) | 2 per 10 min | – | 10 | 60 | $3.80 | $22.80 |
+| Kill switch `/doorstep/kill_switch` | refuses every path above, and answers, before anything is counted | | | | | |
+
+A stranger can spend at most **$6.60 a day and $52.80 in total** on models. Reaching the daily
+cap takes 15 distinct IP addresses (or 2.5 hours from one); reaching the total takes 8 days at
+the daily cap. Then the site says so and offers the recorded drill ($0, a static file).
+
+**Uncounted paths: bounded by route throttles, not counts.** Counting each read would cost more
+than the read. Cost per request, all in: a board poll ≈ $2.7 per million (API $1.00 + Lambda
+256 MB × 0.15 s $0.70 + about 8 eventually consistent read units $1.00); a refused POST ≈ $2–3
+per million. If someone saturated every route, every second, all day:
+
+| Route | Throttle (rps) | Saturated per day |
+|---|---|---|
+| `GET /incidents/{id}` | 3 | $0.70 |
+| `POST /incidents/{id}/decisions/{d}` | 2 | $0.35 |
+| `POST /drills` (refused) | 1 | $0.26 |
+| `POST /captain/session` | 1 | $0.26 |
+| `POST /voice/session` (refused) | 1 | $0.26 |
+| `POST /telegram/webhook` (wrong secret) | 2 (was 10) | $0.30 |
+| `POST /admin/replay` (refused) | 1 | $0.26 |
+| anything else (404, stage default) | 2 (was 5) | $0.35 |
+| **Total** | | **≈ $2.75/day** |
+
+So the true worst case is **≈ $9.35 on the worst day** and, for a flood kept up every second of
+all 24 days, ≈ $66 on top of the $52.80 model ceiling: **≈ $119 against ≈ $130 of credits**. That
+last number assumes a determined attacker for three weeks; the budget alarms would fire on day 1.
+Recommended for Phase 6 (not built): a CloudWatch alarm on API request count that sets the stage
+throttle to zero and emails Ansh, which turns the flood case into one bad day.
+
+Cost of Phase 5 itself so far: 2 sandbox drills ($0.76) + 1 synthetic voice call ($0.01) +
+CloudFront (free tier) ≈ **$0.77**.
 
 ## Forward exposure
 
@@ -115,6 +162,7 @@ rest (SSM parameters stay, and cost nothing).
 
 | Date | Item | Est. | Actual | Status |
 |---|---|---|---|---|
+| 2026-09-13 | Phase 5: 2 sandbox drills (one by pointer with a synthetic voice call, one by keyboard for Gate 5), 1 synthetic browser call; S3 site + CloudFront (free tier), `doorstep-dashboard` Lambda + 4 routes ($0 idle) | ≈ $0.77 | not posted yet | active |
 | 2026-09-13 | Phase 4b: 4 real Twilio calls to the operator's phone (66 s, 68 s, 37 s, 42 s; $0.028 each per Twilio) + about 6 no-ring rehearsals and 2 cloud-browser checks | ≈ $0.20 | Twilio ≈ $0.11 | done |
 | 2026-09-12 | Phase 4: Sonic spikes S1-S3 (~3 calls), 3 deployed browser calls (2 synthetic, 1 fake-mic browser), 1 voice drill incident (assessor + triage only) | ≈ $0.10 | not posted yet | done |
 | 2026-09-12 | Phase 4: `doorstep_voice` runtime + `voice-session` Lambda + route (same image, no new ECR storage) | $0 idle | | active |

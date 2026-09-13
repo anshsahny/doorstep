@@ -1,0 +1,33 @@
+{
+  "id": "heat",
+  "display_name": "Extreme heat",
+  "risk_factors": {
+    "age_80_plus": "Age 80+",
+    "age_70s": "Age 70-79",
+    "lives_alone": "Lives alone",
+    "no_ac": "No air conditioning",
+    "power_dependent": "Needs power for a medical device",
+    "mobility_limited": "Limited mobility",
+    "chronic_flag": "Chronic-condition flag",
+    "prior_no_answer": "No answer in a prior incident"
+  },
+  "red_flags": {
+    "confusion": "Confusion or disorientation",
+    "dizziness_fainting": "Dizziness or fainting",
+    "chest_pain": "Chest pain",
+    "trouble_breathing": "Trouble breathing",
+    "cannot_get_up": "Cannot get up",
+    "other": "Says it is an emergency",
+    "not_sweating_hot": "Feels very hot and has stopped sweating",
+    "heat_indoors_extreme": "Extreme heat indoors"
+  },
+  "needs": {
+    "water": "Water",
+    "ride": "A ride to a relief centre",
+    "medication_access": "Access to medicines",
+    "food": "Food",
+    "company": "Company or a check-in visit",
+    "power": "Power for a medical device",
+    "cooling": "A cooler place or a working fan / AC"
+  }
+}

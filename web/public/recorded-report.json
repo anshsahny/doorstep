@@ -1,0 +1,61 @@
+{
+ "incident_id": "sandbox-20260913-144916-8ad64a",
+ "mode": "sandbox",
+ "residents": 12,
+ "reached": 12,
+ "all_reached": true,
+ "not_reached": [],
+ "outcomes": {
+  "URGENT": 3,
+  "NEEDS_HELP": 2,
+  "NO_ANSWER": 1,
+  "UNCLEAR": 1,
+  "OK": 5
+ },
+ "seconds_to_first_call": 5.5,
+ "seconds_to_reach_everyone": 90.4,
+ "seconds_to_last_reached": 90.4,
+ "urgent": [
+  {
+   "resident_id": "r01",
+   "state": "ESCALATED",
+   "call_to_page_seconds": 10.7,
+   "flagged_mid_call": true
+  },
+  {
+   "resident_id": "r02",
+   "state": "ESCALATED",
+   "call_to_page_seconds": 15.6,
+   "flagged_mid_call": false
+  },
+  {
+   "resident_id": "r06",
+   "state": "ESCALATED",
+   "call_to_page_seconds": 34.7,
+   "flagged_mid_call": true
+  }
+ ],
+ "decisions": {
+  "raised": 8,
+  "answered_by_people": 2,
+  "answered_automatically": 0,
+  "waiting": 6,
+  "expired": 0,
+  "by_channel": {
+   "web": 2
+  }
+ },
+ "automated_actions": 54,
+ "policy_denials": [],
+ "messages": {
+  "resident_tip": 6,
+  "volunteer_task": 1
+ },
+ "phone_tree": {
+  "residents": 12,
+  "minutes_per_call": 4.0,
+  "volunteers_calling": 1,
+  "minutes": 48.0
+ },
+ "fictional": true
+}

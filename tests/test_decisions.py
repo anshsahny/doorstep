@@ -152,19 +152,47 @@ async def test_the_assigned_volunteer_can_answer_their_own_task(ctx: RunContext)
 
 
 async def test_the_web_path_uses_the_same_rules(ctx: RunContext) -> None:
-    """Phase 5's dashboard changes the source, not the rules."""
+    """Phase 5's dashboard changes the source, not the rules.
+
+    The API verifies a signed token and names the subject; a Telegram chat id sent from a browser
+    is not an identity, so knowing the captain's chat id does not let anyone answer.
+    """
     escalate(ctx, "r01")
     decision = a_decision(ctx)
 
-    refused = await respond_to_decision(
-        ctx, decision.id, "handle", Responder(source="web", external_id=STRANGER_CHAT)
-    )
-    assert refused.kind == "forbidden"
+    for subject in (STRANGER_CHAT, CAPTAIN_CHAT, f"sandbox:{ctx.incident_id}", "sandbox:other"):
+        refused = await respond_to_decision(
+            ctx, decision.id, "handle", Responder(source="web", external_id=subject)
+        )
+        assert refused.kind == "forbidden", subject
 
     allowed = await respond_to_decision(
-        ctx, decision.id, "handle", Responder(source="web", external_id=CAPTAIN_CHAT)
+        ctx, decision.id, "handle", Responder(source="web", external_id="captain")
     )
     assert allowed.kind == "applied"
+    assert ctx.store.decision(decision.id).responder == "captain:cap-maria"
+
+
+async def test_a_sandbox_visitor_answers_only_their_own_sandbox_drill(ctx: RunContext) -> None:
+    ctx.mode = "sandbox"
+    escalate(ctx, "r01")
+    decision = a_decision(ctx)
+
+    other = await respond_to_decision(
+        ctx, decision.id, "handle", Responder(source="web", external_id="sandbox:drill-someone")
+    )
+    assert other.kind == "forbidden"
+    mine = await respond_to_decision(
+        ctx,
+        decision.id,
+        "handle",
+        Responder(source="web", external_id=f"sandbox:{ctx.incident_id}"),
+    )
+    assert mine.kind == "applied"
+    again = await respond_to_decision(
+        ctx, decision.id, "handle", Responder(source="telegram", external_id=CAPTAIN_CHAT)
+    )
+    assert again.kind == "already_answered", "a Telegram tap after the dashboard is a no-op"
 
 
 async def test_one_phone_playing_two_roles_resolves_to_the_addressee(

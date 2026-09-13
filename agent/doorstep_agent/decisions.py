@@ -91,6 +91,8 @@ def resolve_responder(
     """
     if responder.source == "drill":
         return None
+    if responder.source == "web":
+        return _resolve_web(ctx, responder, addressed_to)
     candidates = [
         v
         for v in ctx.store.volunteers()
@@ -100,6 +102,31 @@ def resolve_responder(
         return None
     preferred = next((v for v in candidates if v.id == addressed_to), candidates[0])
     return ResolvedResponder(member=preferred, responder=responder)
+
+
+WEB_CAPTAIN = "captain"
+WEB_SANDBOX = "sandbox:"
+
+
+def _resolve_web(
+    ctx: RunContext, responder: Responder, addressed_to: str
+) -> ResolvedResponder | None:
+    """The dashboard's identities. The API checked the signed token and set `external_id`.
+
+    * `captain` (the passcode's token) is the org's captain, and only the captain.
+    * `sandbox:<incident>` is a public visitor playing every role in *their own* sandbox drill,
+      so they resolve to whoever the decision is addressed to (the same rule as one phone playing
+      two parts). It resolves to nobody on any other incident, or on anything but a sandbox.
+    """
+    roster = ctx.store.volunteers()
+    if responder.external_id == WEB_CAPTAIN:
+        member = next((v for v in roster if v.id == ctx.org.captain_id), None)
+        return ResolvedResponder(member=member, responder=responder) if member else None
+    if responder.external_id == f"{WEB_SANDBOX}{ctx.incident_id}" and ctx.mode == "sandbox":
+        member = next((v for v in roster if v.id == addressed_to), None)
+        member = member or next((v for v in roster if v.id == ctx.org.captain_id), None)
+        return ResolvedResponder(member=member, responder=responder) if member else None
+    return None
 
 
 def authorize(ctx: RunContext, decision: Decision, responder: Responder) -> ResolvedResponder | str:

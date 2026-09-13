@@ -1,0 +1,38 @@
+{
+  "name": "doorstep-web",
+  "private": true,
+  "description": "Doorstep dashboard. Built with Strands Agents on Amazon Bedrock AgentCore. Node 22 only.",
+  "type": "module",
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "scripts": {
+    "dev": "vite --port 5173 --strictPort",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 5173 --strictPort",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fontsource/atkinson-hyperlegible-next": "5.3.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@types/node": "22.20.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "axe-core": "4.13.0",
+    "jsdom": "30.0.1",
+    "lighthouse": "13.4.1",
+    "puppeteer-core": "25.10.0",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3",
+    "vite": "8.3.0",
+    "vitest": "5.0.0"
+  }
+}

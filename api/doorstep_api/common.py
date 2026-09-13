@@ -175,6 +175,28 @@ class Deps:
         except self.dynamodb.exceptions.ConditionalCheckFailedException:
             return False
 
+    def reached(self, key: str, limit: int) -> bool:
+        """True if a counter is already at `limit` (a read; nothing is counted)."""
+        item = self.dynamodb.get_item(
+            TableName=self.table,
+            Key={"PK": {"S": key}, "SK": {"S": "COUNT"}},
+            ConsistentRead=True,
+        ).get("Item")
+        return bool(item) and int(item.get("n", {}).get("N", "0")) >= limit
+
+    def uncount(self, key: str) -> None:
+        """Take back one count (a later limit refused the request, or nothing ran)."""
+        try:
+            self.dynamodb.update_item(
+                TableName=self.table,
+                Key={"PK": {"S": key}, "SK": {"S": "COUNT"}},
+                UpdateExpression="ADD n :minus",
+                ConditionExpression="n > :zero",
+                ExpressionAttributeValues={":minus": {"N": "-1"}, ":zero": {"N": "0"}},
+            )
+        except self.dynamodb.exceptions.ConditionalCheckFailedException:
+            pass
+
     # --- the coordinator ---
 
     def invoke(self, incident_id: str, event: dict[str, Any]) -> dict[str, Any]:

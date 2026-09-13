@@ -1,0 +1,102 @@
+# Plain English for every Cedar policy in this directory, shown beside the Cedar text on the
+# dashboard's Policies page. One entry per @id; tests/test_policies_page.py fails if a policy has
+# no entry here, or an entry names a policy that no longer exists.
+#
+# Write for a neighbour, not an engineer: what the rule protects, then when it says yes.
+# `checked_by` names the tests in tests/test_cedar.py that prove the rule through the real
+# CedarAuthorization handler; the page shows them, and a test fails if one is renamed or removed.
+
+sandbox_never_real_channels:
+  title: "The public demo never phones or messages a real person"
+  kind: forbid
+  plain: >-
+    In sandbox mode (the drill anyone can run from this site), Doorstep cannot place a real
+    phone call, send a volunteer, message the volunteer group or contact a family member over a
+    real channel. This rule is a "forbid", so it wins over every rule that would otherwise allow
+    those actions.
+  protects: "Real people, from strangers trying the demo."
+  checked_by:
+    - test_sandbox_forbid_beats_every_permit_on_a_real_channel
+    - test_deny_call_in_drill_and_sandbox_modes
+
+real_call_guarded:
+  title: "Real calls only to people on the list, at reasonable hours"
+  kind: permit
+  plain: >-
+    Doorstep may place a real check-in call only when all of these are true: it is a live
+    incident (not a drill), the number is on the approved call list, the resident agreed to be
+    called, fewer than 3 calls went to them in the last hour, and it is between 8 AM and 9 PM
+    local time. Late calls are allowed only for the most severe alerts, or when the operator
+    tests with their own phone. The code checks the call list a second time before dialling.
+  protects: "Residents, from calls they did not agree to or calls in the middle of the night."
+  checked_by:
+    - test_deny_call_to_non_allowlisted_number
+    - test_deny_call_without_consent
+    - test_deny_call_after_three_attempts_in_an_hour
+    - test_quiet_hours_deny_unless_extreme
+
+assign_available_nearby_volunteer:
+  title: "Only an available volunteer nearby can be sent to a door"
+  kind: permit
+  plain: >-
+    Doorstep may send a volunteer to check on someone only if that volunteer is marked
+    available and lives within 3 km. The short brief about the resident travels only to that one
+    volunteer. For high-risk residents the captain must approve the visit first.
+  protects: "Residents' details, and volunteers' time."
+  checked_by:
+    - test_assign_volunteer_requires_available_and_within_3_km
+
+broadcast_without_resident_details:
+  title: "Group messages never name a resident"
+  kind: permit
+  plain: >-
+    Doorstep may message the whole volunteer group, but only if the message contains no
+    resident details. Anything about a particular person goes to one assigned volunteer or the
+    captain, never to the group.
+  protects: "Residents' privacy."
+  checked_by:
+    - test_deny_group_broadcast_containing_resident_details
+    - test_allow_group_broadcast_without_resident_details
+
+family_contact_needs_consent:
+  title: "Family is contacted only with the resident's consent"
+  kind: permit
+  plain: >-
+    Doorstep may contact a resident's family member only if the resident agreed to that in
+    advance.
+  protects: "Residents' say over who hears about them."
+  checked_by:
+    - test_family_contact_requires_consent
+
+emergency_calls_recorded_by_captain_only:
+  title: "Only a person can record an emergency call"
+  kind: permit
+  plain: >-
+    Doorstep never calls emergency services. When someone may be in danger it tells them to call
+    911 and pages the captain at once. Only the captain (a person) can record that an emergency
+    call was made; the agent's attempts are refused and logged.
+  protects: "Everyone, from an AI deciding it has handled an emergency."
+  checked_by:
+    - test_deny_agent_recording_an_emergency_call_but_allow_the_captain
+
+read_only_always:
+  title: "Looking things up and closing a case are always allowed"
+  kind: permit
+  plain: >-
+    Reading the roster, scoring who to call first, finding relief centres or nearby volunteers,
+    setting a reminder to check again, sending a resident a safety tip, paging the captain and
+    closing a case change nothing outside Doorstep, so they are always allowed.
+  protects: "The check-ins themselves: the safe steps are never blocked."
+  checked_by:
+    - test_read_only_and_always_permitted_tools
+    - test_unknown_tool_is_denied_fail_closed
+
+simulated_checkins_outside_live:
+  title: "Practice calls happen only in drills and the demo"
+  kind: permit
+  plain: >-
+    Simulated check-ins, where a fictional resident is played by a model, may run only in drills
+    and in the sandbox, never during a real incident.
+  protects: "A real incident, from being mixed up with practice."
+  checked_by:
+    - test_simulated_checkins_only_outside_live

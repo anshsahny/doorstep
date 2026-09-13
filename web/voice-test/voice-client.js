@@ -1,16 +1,17 @@
 // Doorstep browser voice client. Phase 5's dashboard imports this as-is.
 //
-//   const call = await startCall({ apiUrl, incidentId, residentId, on: {...} });
+//   const call = await startCall({ apiUrl, token, incidentId, residentId, on: {...} });
+//   (`token` is the dashboard session: a sandbox drill's, or the captain's.)
 //   call.hangUp();
 //
 // Wire protocol: see voice/doorstep_voice/ports.py.
 
-export async function startCall({ apiUrl, incidentId, residentId, on = {} }) {
+export async function startCall({ apiUrl, token, incidentId, residentId, on = {} }) {
   const emit = (name, ...args) => on[name] && on[name](...args);
 
   const res = await fetch(`${apiUrl.replace(/\/$/, "")}/voice/session`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
     body: JSON.stringify({ incident_id: incidentId, resident_id: residentId }),
   });
   const link = await res.json().catch(() => ({}));
