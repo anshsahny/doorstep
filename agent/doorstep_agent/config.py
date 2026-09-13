@@ -25,9 +25,31 @@ def running_in_aws() -> bool:
     return bool(os.getenv("AWS_LAMBDA_FUNCTION_NAME")) or os.getenv("DOORSTEP_ENV") == "cloud"
 
 
+def _profile_exists(name: str) -> bool:
+    """Whether the shared AWS config or credentials file defines this profile."""
+    import configparser
+
+    files = {
+        os.getenv("AWS_CONFIG_FILE", "~/.aws/config"): f"profile {name}",
+        os.getenv("AWS_SHARED_CREDENTIALS_FILE", "~/.aws/credentials"): name,
+    }
+    for path, section in files.items():
+        parser = configparser.ConfigParser()
+        try:
+            parser.read(Path(path).expanduser())
+        except configparser.Error:
+            continue
+        if parser.has_section(section):
+            return True
+    return False
+
+
 if not running_in_aws():
     load_dotenv(ROOT / ".env")
-    os.environ.setdefault("AWS_PROFILE", "doorstep")
+    # Only a machine that has the `doorstep` profile gets it by default. Forcing a profile that
+    # does not exist (CI has none) makes every boto3 client fail, even ones given explicit keys.
+    if "AWS_PROFILE" not in os.environ and _profile_exists("doorstep"):
+        os.environ["AWS_PROFILE"] = "doorstep"
 os.environ.setdefault("AWS_REGION", "us-east-1")
 os.environ.setdefault("AWS_DEFAULT_REGION", os.environ["AWS_REGION"])
 
