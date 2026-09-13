@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Doorstep voice check-in test</title>
+    <style>
+      :root { font-family: system-ui, sans-serif; color: #1d232a; background: #f6f4ef; }
+      main { max-width: 42rem; margin: 2rem auto; padding: 0 1rem; }
+      h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+      .note { color: #5b6470; font-size: 0.9rem; margin-top: 0; }
+      label { display: block; margin: 0.8rem 0 0.2rem; font-weight: 600; font-size: 0.9rem; }
+      input, select { width: 100%; padding: 0.5rem; font: inherit; box-sizing: border-box; }
+      .row { display: flex; gap: 0.6rem; margin-top: 1rem; }
+      button { font: inherit; padding: 0.7rem 1.1rem; border-radius: 0.5rem; border: 0; cursor: pointer; }
+      #start { background: #1f6f4a; color: white; }
+      #hangup { background: #9b2c2c; color: white; }
+      button:disabled { opacity: 0.45; cursor: default; }
+      #status { margin-top: 1rem; font-weight: 600; }
+      #log { margin-top: 1rem; background: white; border-radius: 0.5rem; padding: 0.8rem; min-height: 10rem; }
+      .agent { color: #1f4f7a; } .resident { color: #6b3f10; } .sys { color: #5b6470; font-style: italic; }
+      footer { margin-top: 2rem; color: #5b6470; font-size: 0.8rem; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Doorstep: answer a check-in call</h1>
+      <p class="note">
+        You play a fictional resident. Use headphones so the agent does not hear itself.
+        Calls end after 3 minutes.
+      </p>
+      <label for="api">API URL</label>
+      <input id="api" />
+      <label for="incident">Drill (incident id)</label>
+      <input id="incident" placeholder="drill-2026…" />
+      <label for="resident">Resident you are playing</label>
+      <select id="resident"></select>
+      <div class="row">
+        <button id="start">Answer the call</button>
+        <button id="hangup" disabled>Hang up</button>
+      </div>
+      <div id="status">Idle</div>
+      <div id="clock" class="note"></div>
+      <div id="log" aria-live="polite"></div>
+      <footer>
+        Built with Strands Agents on Amazon Bedrock AgentCore · Voice: Amazon Nova 2 Sonic ·
+        All residents are fictional.
+      </footer>
+    </main>
+    <script type="module">
+      import { startCall } from "./voice-client.js";
+      import config from "./config.js";
+
+      const $ = (id) => document.getElementById(id);
+      const residents = [
+        ["r01", "Rose"], ["r02", "Walter"], ["r03", "Luis (es)"], ["r04", "Dolores"],
+        ["r05", "Harold"], ["r06", "Mei-Ling"], ["r07", "Gloria (es)"], ["r08", "Frank"],
+        ["r09", "Evelyn"], ["r10", "George"], ["r11", "Anita"], ["r12", "Ben"],
+      ];
+      for (const [id, name] of residents) $("resident").add(new Option(`${name} (${id}, fictional)`, id));
+      const params = new URLSearchParams(location.search);
+      $("api").value = params.get("api") || config.apiUrl || "";
+      $("incident").value = params.get("incident") || "";
+      if (params.get("resident")) $("resident").value = params.get("resident");
+
+      let call = null;
+      let timer = null;
+      const line = (cls, text) => {
+        const p = document.createElement("div");
+        p.className = cls;
+        p.textContent = text;
+        $("log").append(p);
+        $("log").scrollTop = $("log").scrollHeight;
+      };
+      const done = () => {
+        $("start").disabled = false;
+        $("hangup").disabled = true;
+        clearInterval(timer);
+        $("clock").textContent = "";
+        call = null;
+      };
+
+      $("start").onclick = async () => {
+        $("start").disabled = true;
+        $("log").textContent = "";
+        $("status").textContent = "Starting…";
+        try {
+          call = await startCall({
+            apiUrl: $("api").value,
+            incidentId: $("incident").value.trim(),
+            residentId: $("resident").value,
+            on: {
+              status: (s) => ($("status").textContent = s === "connected" ? "On the call" : s),
+              transcript: (who, text) => line(who, `${who === "agent" ? "Doorstep" : "You"}: ${text}`),
+              error: (m) => line("sys", m),
+              ended: (reason) => {
+                $("status").textContent = `Call ended (${reason})`;
+                done();
+              },
+            },
+          });
+          $("hangup").disabled = false;
+          const until = Date.now() + (call.maxSeconds || 180) * 1000;
+          timer = setInterval(() => {
+            const left = Math.max(0, Math.round((until - Date.now()) / 1000));
+            $("clock").textContent = `Time left: ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+          }, 1000);
+        } catch (e) {
+          $("status").textContent = e.message;
+          done();
+        }
+      };
+      $("hangup").onclick = () => call && call.hangUp();
+    </script>
+  </body>
+</html>

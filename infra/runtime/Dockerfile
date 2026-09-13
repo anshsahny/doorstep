@@ -19,6 +19,7 @@ COPY pyproject.toml uv.lock README.md ./
 RUN uv sync --frozen --no-dev --group runtime --no-install-project
 
 COPY agent ./agent
+COPY voice ./voice
 COPY data ./data
 COPY evals/personas ./evals/personas
 RUN UV_COMPILE_BYTECODE=0 uv sync --frozen --no-dev --group runtime

@@ -162,6 +162,7 @@ def test_a_replay_starts_one_drill_and_a_retry_returns_the_same_incident(deps: D
         "auto_approve": False,
         "decision_ttl_minutes": 15.0,
         "timeout_seconds": 240.0,
+        "voice_residents": [],
     }
 
 

@@ -22,7 +22,7 @@ from strands.types.tools import AgentTool
 from strands.vended_interventions.cedar import CedarAuthorization
 
 from .geo import haversine_km
-from .runtime import RunContext, resolve_ref
+from .runtime import RunContext, normalize_number, resolve_ref
 from .store import NotFound
 
 COORDINATOR_PRINCIPAL = {"type": "User", "id": "coordinator"}
@@ -34,6 +34,7 @@ SESSION_FIELDS: Mapping[str, str] = {
     "channel": "String",
     "callee_allowlisted": "Bool",
     "callee_consented": "Bool",
+    "operator_test_call": "Bool",
     "attempts_last_hour": "Long",
     "local_hour": "Long",
     "alert_severity": "String",
@@ -127,9 +128,24 @@ def build_context_enricher(ctx: RunContext) -> Callable[[dict[str, Any]], dict[s
                 volunteer = None
 
         allowlisted = False
+        number = None
         if resident is not None and resident.phone_ref:
-            number = resolve_ref(resident.phone_ref)
+            number = normalize_number(resolve_ref(resident.phone_ref))
             allowlisted = bool(number) and number in ctx.call_allowlist
+        # Quiet hours protect residents, not the operator testing on their own phone: true only
+        # for an incident flagged `operator_test` calling exactly the operator's number.
+        try:
+            operator_incident = bool(
+                ctx.store.incident(ctx.incident_id).run_options.get("operator_test", False)
+            )
+        except NotFound:
+            operator_incident = False
+        operator_test_call = (
+            allowlisted
+            and operator_incident
+            and number is not None
+            and number == ctx.operator_test_number
+        )
 
         attempts_last_hour = 0
         if resident is not None:
@@ -152,6 +168,7 @@ def build_context_enricher(ctx: RunContext) -> Callable[[dict[str, Any]], dict[s
             "channel": ctx.channel,
             "callee_allowlisted": allowlisted,
             "callee_consented": bool(resident is not None and resident.consent.calls),
+            "operator_test_call": operator_test_call,
             "attempts_last_hour": attempts_last_hour,
             "local_hour": ctx.local_hour(),
             "alert_severity": ctx.alert_severity,

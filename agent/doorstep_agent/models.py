@@ -358,6 +358,12 @@ class CheckinAttempt(BaseModel):
     )
     agent_summary: str = ""
     result: CheckinResult | None = None
+    # A voice attempt's token id, so its mid-call page and its final transcript land on the same
+    # attempt, and a redelivered event finds the attempt it already made.
+    key: str = ""
+    # Voice call facts for the board and the evidence: end reason, when the page went out,
+    # whether it was delivered before hang-up, barge-ins, speech tokens.
+    meta: dict[str, Any] = Field(default_factory=dict)
 
     def resident_text(self) -> str:
         return "\n".join(t.text for t in self.transcript if t.speaker == "resident")

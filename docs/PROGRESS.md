@@ -1,7 +1,7 @@
 # Doorstep — progress log
 
-Current phase: **3 — Cloud (AgentCore + AWS backend)**: ✅ **complete, Gate 3 passed.** Ready for
-Ansh to commit on `phase3` and say "go" for Phase 4 (voice).
+Current phase: **4 — Voice**: ✅ **complete, Gates 4a and 4b passed** (C6, 2026-09-13 01:08 PDT).
+Ready for Ansh to commit on `phase4` and say "go" for Phase 5.
 Next gate: **Gate 4a**
 Time now vs plan: Phase 0 ran Fri Sep 11 00:00–12:35 PDT (planned Thu evening). Phase 1 ran Fri
 17:45–21:20 PDT, about 3.5 h of its 5 h box. Phase 2 started Sat 08:30 PDT and was committed
@@ -21,8 +21,8 @@ before 11:27 PDT, when Phase 3 planning started: about 1.5 h ahead of the Sat 1 
 | 1 | Unit tests + local 12-resident drill | ✅ passed | `make check` green: ruff clean, 158 unit tests. They cover the drill setup, the deterministic graph gates (activation, plan, outreach), the dummy-profile test (questions, weights, red flags, needs and relief kind change with no code change), a hazard-word guard over the whole agent package, every risk factor and wave rule, every state-machine transition plus retries, 12 backstop tests incl. a 300-case property test (never lowers, never drops flags, both disagreement kinds logged), 29 Cedar cases through the real `CedarAuthorization` handler (non-allowlisted call, sandbox real-channel call, broadcast with resident details, agent recording an emergency call, plus quiet hours/Extreme, attempts cap, consent, distance, availability, unknown tool, schema typos), audit hook, tool code checks, personas, violations. `make local-drill ARGS=--auto-approve`: 12/12 cases RESOLVED with the expected classification for every persona, both urgent personas escalated (r01 explicit via `flag_urgent`, r02 hidden via the backstop), Harold escalated after 3 unanswered attempts, 5 decisions, 13 messages recorded, 139 audit events, 0 policy violations (1 attempt denied by Cedar and audited with the deciding facts), 53.6 s wall-clock on the final tree (49.7 s the run before). Report in `evals/drill_report.json`. | 2026-09-11 |
 | 2 | Interrupt resume test + Telegram approval loop | ✅ passed | **Automated (the real gate):** `tests/test_restart_resume.py` raises an interrupt in one subprocess which then exits, rebuilds from the persisted session in a second interpreter that has only the session directory and the decision record, answers it, and asserts the volunteer task was sent **exactly once** (by process B) and that a second tap returns `already_answered` without re-running anything. `make check` green: ruff clean, **206 tests** (was 165), all offline via a `ScriptedModel` double so they run in CI. Identity: a non-roster chat, a volunteer answering a captain decision, and a volunteer answering another volunteer's task are all refused and audited. Idempotency: double tap, tap-after-expiry, changed choice on a second tap, and a redelivered Telegram `update_id` all leave exactly one effect. Minimal disclosure swept over all 12 drill residents. `make local-drill ARGS=--auto-approve` PASS on the new machinery: 12/12 RESOLVED, both urgent personas escalated, 0 violations, 100.3 s. **Manual (Ansh's phone, `make telegram-drill`):** 12 taps over 8 decisions in 154 s — one decision tapped five times (four `already_answered`), one expired then tapped (`expired`), every tap attributed to `captain:cap-maria` through a chat shared with `vol-tom`, 0 violations, 12/12 settled. The run surfaced two real bugs (lost "Send Sam" decisions; a `9999 km` label) and a TTL design error; all three fixed and covered by tests before the gate was marked. | 2026-09-12 |
 | 3 | Cloud drill via AgentCore + Telegram webhook + traces | ✅ passed | **Deploy:** `make deploy` created stack `Doorstep` from nothing (118 s) and ran again green from a clean clone + this phase's diff (`make setup && make deploy`; the runtime image hashed identically). **Resume in the cloud:** `make cloud-restart-test ARGS="--delay 120"` 18/18 — paused in process A, `StopRuntimeSession`, a real-webhook tap resumed in process B from S3, exactly one volunteer task, two replays dropped at the webhook, a second tap `already_answered`, wrong secret 401. **Cloud drill with Telegram:** `make cloud-drill ARGS=--telegram` PASS on `drill-20260912-234122-d132`: 12/12 settled, r01 and r02 escalated, 0 violations, 8 taps from Ansh's phone through the webhook (7 as `captain:cap-maria`, 1 as `volunteer:vol-tom`), 117 s. **Traces:** 2,059 spans in 14 traces for that incident (`make trace`). **No secrets:** `make scan-logs` 0 matches for 17 values over 20,500 events. **Offline:** 277 tests. **Cost:** $5.31 gross / $0.00 net to date (Phase 3 ≈ $1.2 gross). | 2026-09-12 |
-| 4a | 3 browser check-ins | ☐ | | |
-| 4b | 2 real calls + mid-call escalation | ☐ | | |
+| 4a | 3 browser check-ins | ✅ passed | **Three consecutive real browser calls by Ansh** (Chrome, mic, headphones) through the deployed path (`/voice/session` → presigned WebSocket → `doorstep_voice` runtime → Nova 2 Sonic → coordinator), incident `drill-20260913-034202-acd6`, on the final build: **Rose (r01) OK**, 4 answers, 2 barge-ins, result applied **2.2 s** after hang-up; **George (r10) NEEDS_HELP** (ride, cooling), 3 barge-ins, volunteer task raised, applied **1.5 s** after hang-up; **Evelyn (r09) URGENT mid-call**: the live backstop matched "dizzy and confused", **the captain's decision `dec-003` existed at 04:06:16.6, 6 s before hang-up at 04:06:22**, the line was held until it was out, final classification URGENT applied **1.2 s** after hang-up. Before these: Ansh's C2 call (Mei-Ling OK, 2.5 s) and three automated `make voice-e2e` calls (OK 1.5 s and 1.8 s; urgent paged 8.2 s before hang-up). `make check` 322 tests; `make scan-logs` 0 matches. Sonic ≈ $0.010–0.016 per call. | 2026-09-12 |
+| 4b | 2 real calls + mid-call escalation | ✅ passed | Real calls from the Twilio `doorstep` subaccount to Ansh's own allowlisted phone, through the `checkin_worker` dialer and the phone bridge (ngrok), Cedar allowing each only through the operator quiet-hours exception. **Call 1** `live-20260913-044054-c586`: Twilio `completed` 66 s, full protocol, OK, result applied 1.5 s after hang-up. **Call 2** `live-20260913-074003-405b` (on speaker, recorded): `completed` 68 s, full protocol, OK, RESOLVED. **Call 3** `live-20260913-080655-3cec` (Telegram on, recorded): "I feel dizzy and confused, I'm not sure what day it is". The live backstop paged at 08:07:35.0, **the captain's Telegram message was sent at 08:07:36.7, and Twilio ended the call at 08:07:52: 15.3 s before hang-up**. URGENT, ESCALATED, final classification applied 1.1 s after hang-up. Before these: no-ring rehearsals through the deployed chain, where Cedar denied non-allowlisted residents in the cloud. `make check` 354 tests. | 2026-09-13 |
 | 5 | Judge flow < 4 min, Lighthouse a11y ≥ 90 | ☐ | | |
 | 6 | Evals targets, CI green, clean-clone setup | ☐ | | |
 | 7 | Submitted | ☐ | | |
@@ -38,6 +38,214 @@ before 11:27 PDT, when Phase 3 planning started: about 1.5 h ahead of the Sat 1 
 | 5 | Telegram ping + button | ✅ PASS 2026-09-11 | Bot `@doorstep_agent_bot`; captain chat ID from the `--whoami` step. Message with 3 inline buttons sent; the `I'm handling it` callback arrived 7.5 s later via long polling, was answered, and the message was edited. First run timed out at 120 s with no tap; second run passed. |
 
 ## Log (newest first)
+
+### 2026-09-13 about 01:10 PDT — Gate 4b passed (C4, C5, C6); what went wrong on the way
+- Three real calls (details in the Gates table). Call 1 on the handset, calls 2 and 3 on speaker
+  and recorded by Ansh (Mac audio plus a phone screen recording of the Telegram chat).
+- **The repository changed under the session at 00:05.** The reflog shows the Phase 4 working
+  changes stashed (`stash@{0}`), a checkout of `main`, then `phase1`, then back to `phase4` with the
+  changes restored. None of these commands came from Claude. Verified afterwards: every file
+  present, 353 tests green. The deployed stack and the running bridge were unaffected. `stash@{0}`
+  is now a redundant copy for Ansh to drop.
+- **Found and fixed: a result reached the incident 62 s after hang-up** (call 2). The bridge's
+  InvokeAgentRuntime call hung on a dead pooled connection until botocore's 60 s read timeout.
+  `CoordinatorSink` now uses a client with 5 s connect, 10 s read, 4 standard retries (every event
+  is claimed once, so retrying is safe) and TCP keepalive. Test added.
+- **First take of call 3 was not usable for the video.**
+  1. The page left 11 s late: the connection had died again, cut from 60 s to 11 s by the new
+     timeout. Ansh had moved between networks, which drops open connections. Telegram still went
+     out before hang-up (by construction the bridge waits for the delivery row), but the line sat
+     silent until it did, then closed abruptly.
+  2. **After the correct red-flag line, Sonic said "sorry, this call cannot proceed".** Cause: the
+     live backstop also sent Sonic a bracketed text nudge ("[The resident just mentioned a red
+     flag…]"), which it treated as an injected instruction. **Removed**: the page never depended on
+     it, and the agent's prompt already handles red flags. The test now pins that no text is
+     injected into a call on a red flag.
+  3. A keep-warm loop and tighter timeouts were tried and then reverted at Ansh's suggestion
+     (the network explained the stalls); not needed for the retake.
+- **This Mac cannot open the ngrok URL** (TLS "wrong version number" over IPv4 and IPv6, on both
+  networks; a `utun4` interface suggests a VPN or security client filtering ngrok domains). Twilio
+  reaches it from the internet: confirmed twice from an AgentCore cloud browser (`/healthz` →
+  `{"ok":true}`). `make phone-rehearse ARGS=--local` rehearses against the bridge on localhost.
+- **Retake of call 3: clean.** The page left in 0.54 s, Telegram was delivered 15.3 s before
+  hang-up, and there was no refusal line.
+- Found for the Phase 6 evals (not fixed): on the retake Sonic added "Someone will be sent to check
+  on you right away", a near-promise of timing (the same pattern as George in Gate 4a).
+- Cost: each real call is about $0.028 Twilio plus about $0.01 Sonic.
+
+### 2026-09-12 about 21:40 PDT — phone path built, deployed and rehearsed; at C4
+- Built:
+  - **Cedar quiet-hours exception** (Ansh's C1 option a). The session gains
+    `operator_test_call`, true only when the incident is flagged `operator_test` **and** the callee
+    normalizes to exactly `OPERATOR_TEST_NUMBER` **and** is allowlisted. Live mode, consent and
+    the attempt cap still apply.
+  - **E.164 normalization** everywhere a number is compared (`runtime.normalize_number`,
+    mirrored in `doorstep_api.common` and tested equal).
+  - **Real `place_checkin_call`**: live only, allowlisted, consented, a dialer present; claims
+    `DIAL#…` once; enqueues the resident, never the number.
+  - `agents/planned.PlannedAction`: a one-turn model, so a deterministic call still crosses Cedar
+    and the audit hook (spike S4).
+  - Coordinator `live_call` event: operator only (IAM invoke, no public route), a one-resident
+    live incident.
+  - SQS `doorstep-checkin-jobs` (max receive 1, then a DLQ: a real call is never retried).
+  - **`checkin_worker` Lambda**: re-derives everything from DynamoDB and SSM, dials only an exact
+    allowlist number, refuses a parent account, claims `DIALED#…`, mints a 2-minute phone token
+    and passes it as TwiML `<Parameter>`. `twilio_rest.py` is the only code that can create a call.
+  - **`doorstep_voice.phone`**: Twilio Media Streams port. 8 kHz mu-law, `clear` on barge-in,
+    `mark` to hear the closing line. On `start` it checks media format, subaccount SID, kill
+    switch, phone token, live mode and single use before any model.
+  - `make phone-bridge | phone-preflight | phone-rehearse | phone-call | phone-evidence`.
+  - SSM: `operator_test_number` (from `.env` `SMOKE_CALL_TO`, only because it is `CALL_ALLOWLIST[0]`),
+    `twilio/subaccount_sid|subaccount_token|from_number`, `voice_bridge_url` (set by the bridge).
+- Verified how:
+  - `make check` green, **353 tests** (was 322). New `tests/test_phone.py` (29):
+    - normalizers agree;
+    - Cedar: operator number allowed at 23:00, ordinary live incident denied, another allowlisted
+      number denied with the flag, drill/sandbox denied, 25 random numbers denied;
+    - the tool: queues once, refuses random numbers, other modes and a missing dialer;
+    - the worker: dials once with a valid phone token; refuses drill, sandbox, a resident outside
+      the incident, an unknown incident, a parent account, a bridge URL with a query, the kill
+      switch;
+    - **a 300-job property test**: every call is to an allowlisted number;
+    - no code but `twilio_rest.py` creates calls;
+    - the bridge refuses another account, a browser token and a drill token before any model;
+    - **one call end to end offline**: `live_call` at 23:00 → Cedar allow (and deny without the
+      flag) → queue → worker → fake Twilio → token from TwiML → bridge → red flag → captain's
+      decision out while the line is held → case ESCALATED on the phone channel.
+  - Two new CDK tests: only the dialer holds Twilio credentials and it cannot reach the runtime;
+    the queue never retries. `make deploy` green (204 s).
+  - `make phone-preflight`: **PASS 9/9**. Parameters exist, the operator number is allowlist[0],
+    kill switch off, dialer deployed, ngrok reaches the bridge, the Twilio credentials are an
+    active subaccount (read-only lookup), the deployed dialer refuses an unknown incident and a
+    malformed job, the coordinator answers.
+  - `make phone-rehearse` (synthetic Twilio client through ngrok, **no phone rang**):
+    - OK script, r04: `live_call` **DENIED by Cedar in the cloud** (no phone on file); the full
+      8 kHz mu-law call reached OK, RESOLVED, channel phone.
+    - Urgent script, r02: DENIED again; red flag at 22.5 s, **captain's decision out at 28.6 s**,
+      stream closed at 36.1 s, URGENT, ESCALATED.
+  - `make telegram-webhook ARGS=info`: webhook on the API host, 0 pending.
+  - `make scan-logs ARGS="--hours 1"`: 0 of 25 secret values, dialer logs included.
+
+### 2026-09-12 about 21:10 PDT — Gate 4a passed with Ansh's voice (C2, C3)
+- C2: Ansh's first call (Mei-Ling, r06) was a clean OK with 2 barge-ins, result applied 2.5 s after
+  hang-up. It showed the attempt's start time was when the coordinator created the attempt, not
+  when the call began. Fixed (the urgent event carries `started_at`) and redeployed; a synthetic
+  call on the new build confirmed it (63 s call, 1.8 s to result).
+- C3: three consecutive calls, all passing (details in the Gates table). Ansh's tab kept the
+  earlier incident URL, so they landed in `drill-20260913-034202-acd6` rather than the fresh one;
+  that does not change what they prove.
+- Found, not fixed (recorded for the Phase 6 evals, not worth reopening a passing gate):
+  1. After George pressed for a ride, Sonic said "Someone will arrange that for you right away".
+     That brushes against "never promise an arrival time". Candidate prompt line: "say the team
+     will follow up; never say when".
+  2. For George the dispatcher raised the volunteer task and then called `close_case` in the same
+     turn, so the case shows RESOLVED while the volunteer's "On my way / They're OK" task is still
+     pending. Text-path behaviour, not voice-specific; Phase 6 should decide whether a case waits
+     for the volunteer.
+  3. For Evelyn the page came from the live backstop. Sonic said the red-flag line after the
+     nudge but never called `flag_urgent` itself; the final classification added it. This is
+     exactly why the backstop runs live.
+
+### 2026-09-12 about 20:55 PDT — browser voice deployed and working end to end; at C2
+- Built:
+  - `checkin_text.protocol_prompt(profile, org, resident, channel)`: the one script for text and
+    voice. The text prompt is byte-for-byte unchanged for all 12 residents (checked against a
+    snapshot taken before the refactor).
+  - `flag_urgent` calls an optional `on_urgent` callback and no longer needs a RunContext.
+  - `voice/doorstep_voice/`: `tokens` (HMAC, 60 s, single use), `audio` (mu-law, identical to
+    `audioop` on all inputs), `session.VoiceCheckin`, `ports.BrowserPort`, `sink`, `serve`,
+    `entrypoint`.
+  - Coordinator events `checkin_urgent` (page now, provisional URGENT, dispatch) and
+    `checkin_attempt` (classified in the coordinator by the same layers as text; never lowers a
+    mid-call page). `CheckinAttempt.key` and `.meta`.
+  - `DrillRunner(voice_residents=...)` and the replay option.
+  - `POST /voice/session` Lambda with a presigned URL and caps.
+  - CDK: the `doorstep_voice` runtime from the same image (`DOORSTEP_SERVICE=voice`) with a
+    header allowlist for the token, the Lambda, the route, CORS for `http://localhost:5174`.
+  - `web/voice-test/` (AudioWorklet capture and playback, barge-in `clear`).
+  - `make voice-incident | voice-page | voice-e2e | voice-evidence`. `scan-logs` now covers both
+    new log groups.
+- Verified how:
+  - `make check` green, **322 tests** (was 278). New: `tests/test_voice.py` (25: tokens, codec,
+    prompt reuse, dummy profile, the real `flag_urgent` tool, and a call on a fake Sonic: the
+    resident's words page before the line closes, the agent's flag from a tool thread, negation,
+    barge-in, hang-up, time cap, silence, page wait gives up) and `tests/test_voice_cloud.py`
+    (20: every admission refusal before a model stream, reused token, mid-call page then a final
+    "OK" that stays URGENT, the backstop on a voice transcript, link caps, kill switch). Two new
+    CDK least-privilege tests.
+  - `make deploy` green (110 s).
+  - Deployed synthetic browser calls (`make voice-e2e`, `say` audio through
+    `/voice/session` → presigned WebSocket → Sonic → coordinator), incident
+    `drill-20260913-034202-acd6`:
+    - **OK script, r04: PASS**. Full protocol, four answers recorded, result OK applied **1.5 s**
+      after hang-up, case RESOLVED.
+    - **Urgent script, r02: PASS**. Red-flag words transcribed at 25.0 s, **captain's decision
+      out at 26.8 s**, the line held until the page was out, hang-up at 33.4 s. Evidence: "captain
+      paged 8.2 s BEFORE hang-up", result URGENT applied 1.2 s after hang-up, case ESCALATED.
+  - A real browser (in-app pane, oscillator in place of the mic, r05): presigned WebSocket
+    opened, 318 KB of Sonic audio played through the worklet, transcripts shown, silence cap ended
+    it, no console errors.
+  - `make scan-logs ARGS="--hours 1"` PASS, 0 of 17 secrets in 1,430 events, voice included.
+  - Nova 2 Sonic prices confirmed with the AWS Price List API; per-call costs in `docs/COST.md`.
+- Changed in SSM: `/doorstep/caps` gains `voice_per_ip_per_hour: 10` (testing; **reset to 4 on 2026-09-13 01:45**), `voice_daily: 20`, `voice_total: 150`.
+- Noise, not a bug: awscrt logs `InvalidStateError: CANCELLED` when a Sonic stream closes (seen
+  since Phase 0).
+
+### 2026-09-12 evening — Phase 4 spikes (all PASS) and the browser voice build
+- Ansh at C1: quiet-hours exception (a), AgentCore Runtime WebSocket for the browser with no EC2
+  ("no more money"), IAM-signed events to the coordinator, Ansh commits at the end, Gate 4a on
+  the deployed runtime.
+- **S1 PASS** (`scripts/spikes/p4_s1_sonic_checkin.py`, 16 kHz, the real protocol prompt and
+  `CHECKIN_TOOLS` on `amazon.nova-2-sonic-v1:0`): a cross-modal text line makes Sonic greet first;
+  the resident's red-flag utterance began at 27.1 s, ended at 28.8 s, and **`flag_urgent` ran at
+  29.5 s** (0.75 s after the words ended); the tool body was made to block for 5 s and **61 audio
+  chunks still arrived meanwhile**, so mid-call tool calls do not stall the call. Sonic then said
+  the profile's red-flag line and called `end_call`.
+- **S2 PASS** (`--rate 8000`, resident audio pushed through mu-law encode/decode like a phone
+  line): a full OK call, all four `record_answer` calls with the right question ids, `end_call`.
+  Nova accepts 8 kHz in and out, so the phone path needs no resampling.
+- **S3 PASS** (`--barge-in`): talking over the greeting produced `BidiInterruptionEvent` 0.4 s
+  later with `stop_reason=interrupted`; Sonic streams audio about 1.7 s ahead of real time.
+- **Cost, first measurement** (S2, a 57 s call): 749 speech + 1,046 text tokens in, 737 speech +
+  465 text tokens out (Nova's raw usage event; Strands only logs the split at DEBUG, so the voice
+  session taps that log). At $3/$12 per 1M speech tokens in/out and $0.33/$2.75 text: **≈ $0.013
+  for a one-minute call.** Prices are third-party list prices until Cost Explorer confirms.
+- **S4 PASS** (`p4_s4_direct_call_cedar.py`, $0): a direct `agent.tool.x()` call cannot carry the
+  RunContext (Strands merges invocation state into the tool input and fails to serialize it), so
+  a deterministic real-call trigger must be a one-turn model through the normal loop. That path
+  ran Cedar: allowlisted r01 **allow**; a random number **deny** with the deciding facts audited.
+- Found: `record_answer` calls may arrive all at once at the end of a voice call rather than after
+  each answer (S2). Harmless: the coordinator classifies the whole attempt after hang-up.
+
+### 2026-09-12 — Architecture diagram (SUBMISSION §8)
+- `docs/architecture.drawio` (source), `architecture.png` (2132 px), `architecture.svg`; generated by
+  `scripts/gen_architecture.py`, exported with draw.io Desktop CLI (`brew install --cask drawio`),
+  official AWS icons from draw.io's aws4 library. Checked by eye at 2132 px and scaled to 800 px.
+- **Decision (Ansh):** draw the final design, including parts not built yet. Not in code as of Phase 3:
+  voice bridge (EC2, BidiAgent, Nova 2 Sonic, Twilio; `place_checkin_call` is a stub), dashboard +
+  CloudFront, SQS, AgentCore Memory (resident notes come from DynamoDB via `get_resident_memory`).
+  Update the diagram if any of those are cut.
+
+### 2026-09-12 about 17:40 PDT — Phase 4 plan proposed at C1 (no code)
+- Gate 3 confirmed passed. Ansh's change: all of Phase 4 tonight in one 7 h box, browser voice
+  shipped and committed first (C1–C3), then the phone path (C4–C6); abort after 3 h of phone work
+  or at 02:00.
+- Verified before planning (Strands docs MCP, AgentCore docs, Nova 2 Sonic docs, installed source
+  strands-agents 1.55.1 / bedrock-agentcore 1.22.0):
+  - `BidiAgent` runs each tool call as its own task (`bidi/agent/loop.py` `_run_model` →
+    `_task_pool.create(self._run_tool(...))`) while the model stream keeps flowing, so a tool can
+    page the captain mid-call. **Tool interrupts are not supported in bidi** (`RuntimeError`), so
+    `flag_urgent` must never interrupt; the page happens in the coordinator.
+  - `BedrockNovaSonicModel` sends `audio.input_rate` / `output_rate` to Nova unchanged (defaults
+    16000/16000, PCM16 mono, base64) and does **no** resampling. Nova 2 Sonic accepts
+    8000 | 16000 | 24000 Hz on both input and output (sonic-input-events docs); voices include
+    `tiffany` and `lupe`/`carlos`. Interruptions arrive as `BidiInterruptionEvent`.
+  - AgentCore Runtime serves WebSockets at `/ws` (`@app.websocket`) with SigV4 presigned URLs
+    (`AgentCoreRuntimeClient.generate_presigned_url(runtime_arn, session_id, custom_headers,
+    expires)`); 250 frames/s, 64 KB frames, 60 min per connection. Twilio stream URLs take no
+    query string and no custom headers, so Twilio cannot use it.
+  - The replay fixture's severity is **Severe**, so `real_call_guarded` denies real calls outside
+    08:00–21:00 local: a phone gate after 21:00 tonight is blocked by our own policy.
 
 ### 2026-09-12 evening — CI fix after the Phase 3 commit
 - CI failed 2 of 277: `test_restart_resume.py[dynamo]` raised `ProfileNotFound: doorstep`.
@@ -496,6 +704,10 @@ before 11:27 PDT, when Phase 3 planning started: about 1.5 h ahead of the Sat 1 
 | 2026-09-12 | Telegram callback data is `d|<incident>|<decision>|<option>` | Decision ids are unique only per incident, and the webhook must route a tap to its incident's session before looking anything up; worst case 51 of 64 bytes | globally unique decision ids plus a lookup row |
 | 2026-09-12 | Webhook dedupe claims `update_id` before anything else and releases the claim only if forwarding fails; deliveries are claimed before `sendMessage` | A Telegram retry must be a no-op; a crash between claim and send leaves a decision unsent (board still shows it) rather than sent twice | claim after forwarding (a retry during a slow forward double-forwards) |
 | 2026-09-12 | Secrets live in SSM SecureStrings written by `make secrets-push`; processes read them into memory at start; CDK references names only; the runtime image is built from an allowlisted staging directory | Nothing sensitive in the template, outputs, env config or image; `.env` cannot reach `cdk.out` | Secrets Manager ($0.40/secret/month); `.dockerignore` (a denylist) |
+| 2026-09-12 | Quiet hours: a narrow Cedar exception for the operator's own test number (SSM `/doorstep/operator_test_number`) on incidents flagged `operator_test`; live mode, allowlist, consent and the attempts cap still apply (Ansh, C1 option a) | The replay alert is Severe, so `real_call_guarded` denies calls after 21:00 and the phone gate runs tonight; a resident's allowlisted number stays denied at night | keep the policy and run the phone gate Sunday after 08:00 |
+| 2026-09-12 | Browser voice runs on AgentCore Runtime's WebSocket (`/ws`, a separate `doorstep_voice` runtime from the same image) reached by a 60 s SigV4 presigned URL; the phone bridge is the same code run locally behind ngrok; no EC2 (Ansh: "no more money") | No standing EC2 cost (~$12/month) and no plain-HTTP origin hop; AgentCore bills only while a session runs. Twilio cannot present SigV4 (no query string, no headers), so it needs its own host | EC2 t4g.small + CloudFront (PLAN) |
+| 2026-09-12 | Voice processes send raw attempts and mid-call urgent events to the coordinator with IAM-signed `InvokeAgentRuntime`, and the coordinator classifies | No shared secret, one hop fewer; the deterministic layers run in one place for text and voice | HMAC-signed `/internal/checkin-result` Lambda (PLAN) |
+| 2026-09-12 | Ansh commits Phase 4 himself at the end; checkpoints leave the working tree ready | Standing rule (CLAUDE.md) | Claude commits at C3/C6 |
 | 2026-09-11 | The active profile and the replay fixture are configuration (`DOORSTEP_PROFILE`, `DOORSTEP_ALERT_FIXTURE` in `config.py`); a test forbids hazard words anywhere else in the agent package | Makes "nothing hazard-specific is hard-coded" checkable | a default in the drill runner (caught by the guard) |
 
 ## Second-number swap (do before the video and submission)

@@ -98,8 +98,12 @@ class DrillRunner:
         incident_id: str | None = None,
         alert: Alert | None = None,
         run_options: dict[str, Any] | None = None,
+        voice_residents: list[str] | None = None,
     ) -> None:
         self.cfg = cfg or settings()
+        # Residents a person will answer for by voice: the drill never simulates them and does
+        # not wait for them; their results arrive as coordinator events.
+        self.voice_residents = frozenset(voice_residents or [])
         self.store_factory = store_factory
         self.incident_id = incident_id
         self.alert = alert
@@ -284,6 +288,8 @@ class DrillRunner:
             )
             now = ctx.clock.now()
             for case in cases:
+                if case.resident_id in self.voice_residents:
+                    continue
                 if case.resident_id in running and not running[case.resident_id].done():
                     continue
                 if ctx.policy.retry_due(case, now):
@@ -297,7 +303,7 @@ class DrillRunner:
             # A decision nobody has answered yet keeps the drill alive: with a real captain on
             # the other end, the run is not finished, it is waiting.
             waiting = bool(ctx.store.decisions(ctx.incident_id, status="pending"))
-            settled = all(is_settled(c) for c in cases)
+            settled = all(is_settled(c) for c in cases if c.resident_id not in self.voice_residents)
             if settled and not active and not waiting:
                 break
             if self.elapsed() > self.timeout_seconds:

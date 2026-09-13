@@ -16,6 +16,7 @@ import boto3
 
 PREFIX = os.getenv("DOORSTEP_SSM_PREFIX", "/doorstep")
 INCIDENT_ID = re.compile(r"^[a-z0-9][a-z0-9-]{2,60}$")
+_E164 = re.compile(r"^\+[1-9][0-9]{7,14}$")
 CLAIM_TTL_SECONDS = 14 * 24 * 3600
 
 
@@ -25,6 +26,14 @@ def runtime_session_id(incident_id: str) -> str:
     if len(base) < 33:
         base += "-" + hashlib.sha256(incident_id.encode()).hexdigest()[:16]
     return base[:100]
+
+
+def normalize_number(raw: str | None) -> str | None:
+    """Keep in step with `doorstep_agent.runtime.normalize_number` (a test compares the two)."""
+    if not raw:
+        return None
+    cleaned = re.sub(r"[\s().-]", "", raw)
+    return cleaned if _E164.match(cleaned) else None
 
 
 def log(**fields: Any) -> None:
@@ -65,10 +74,20 @@ class Deps:
 
     table: str = field(default_factory=lambda: os.getenv("DOORSTEP_TABLE", ""))
     runtime_arn: str = field(default_factory=lambda: os.getenv("DOORSTEP_RUNTIME_ARN", ""))
+    voice_runtime_arn: str = field(
+        default_factory=lambda: os.getenv("DOORSTEP_VOICE_RUNTIME_ARN", "")
+    )
     _ssm: Any = None
     _dynamodb: Any = None
     _agentcore: Any = None
     _params: dict[str, tuple[float, str | None]] = field(default_factory=dict)
+
+    _session: Any = None
+
+    @property
+    def boto_session(self) -> Any:
+        self._session = self._session or boto3.Session()
+        return self._session
 
     @property
     def ssm(self) -> Any:

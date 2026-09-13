@@ -3,18 +3,23 @@
 The script is assembled entirely from the active hazard profile and the org record: greeting,
 hazard intro, the shared "how are you feeling" question, the profile's own questions, the tip
 and the closing. The resident side is any `ResidentChannel` (a simulated persona in drills).
+
+`protocol_prompt` is the one place the script becomes instructions. The voice check-in
+(`doorstep_voice`, Strands BidiAgent on Nova 2 Sonic) calls it with `channel="voice"`, which only
+adds how to behave on a live call, so a profile edit changes what both channels ask.
 """
 
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 from strands import Agent
 
 from ..audit import AuditHook
 from ..guards import ModelCallGuard
-from ..models import CheckinAttempt, ConversationTurn, Resident
+from ..models import CheckinAttempt, ConversationTurn, OrgProfile, Resident
+from ..profiles import HazardProfile
 from ..runtime import RunContext
 from ..tools import CHECKIN_TOOLS
 from ._common import bullet_list, make_model
@@ -29,12 +34,20 @@ class ResidentChannel(Protocol):
     async def reply(self, agent_text: str) -> str | None: ...
 
 
+# What the voice channel sends the model when the call connects, so it speaks first.
+CALL_CONNECTED = "[call connected]"
+
+
 def script_lines(ctx: RunContext, resident: Resident) -> dict[str, str]:
     """Every scripted line for this resident, in their language, placeholders filled."""
-    profile, lang = ctx.profile, resident.language
+    return protocol_lines(ctx.profile, ctx.org, resident)
+
+
+def protocol_lines(profile: HazardProfile, org: OrgProfile, resident: Resident) -> dict[str, str]:
+    lang = resident.language
     fill = {
         "first_name": resident.first_name,
-        "org_name": ctx.org.name,
+        "org_name": org.name,
         "hazard_phrase": profile.hazard_phrase(lang),
         "hazard_short": profile.hazard_short(lang),
     }
@@ -54,8 +67,19 @@ def script_lines(ctx: RunContext, resident: Resident) -> dict[str, str]:
 
 
 def system_prompt(ctx: RunContext, resident: Resident) -> str:
-    profile, lang = ctx.profile, resident.language
-    lines = script_lines(ctx, resident)
+    return protocol_prompt(ctx.profile, ctx.org, resident, channel="text")
+
+
+def protocol_prompt(
+    profile: HazardProfile,
+    org: OrgProfile,
+    resident: Resident,
+    *,
+    channel: Literal["text", "voice"] = "text",
+) -> str:
+    """The check-in instructions for one resident. Voice adds live-call rules and nothing else."""
+    lang = resident.language
+    lines = protocol_lines(profile, org, resident)
     questions = bullet_list(
         [
             f"[{q.id}] {q.text(lang)}" for q in profile.checkin_questions
@@ -68,8 +92,8 @@ def system_prompt(ctx: RunContext, resident: Resident) -> str:
         if lang == "es"
         else "Speak plain English."
     )
-    return (
-        f"You are Doorstep, calling {resident.first_name} for the {ctx.org.name} because of "
+    script = (
+        f"You are Doorstep, calling {resident.first_name} for the {org.name} because of "
         f"{profile.hazard_phrase(lang)}. Built with Strands Agents.\n"
         "Tone: warm, slow and clear. Short sentences. One question at a time. Aim for 60-90 "
         "seconds in total. Never promise an arrival time. Never give medical advice beyond the "
@@ -96,7 +120,20 @@ def system_prompt(ctx: RunContext, resident: Resident) -> str:
         f'If they say it is an emergency: say "{lines["emergency_response"]}", call '
         "flag_urgent, then end_call.\n"
         "If they cannot talk now or hang up: say a brief goodbye and call end_call.\n"
-        "Reply with only the words you say to the resident, nothing else."
+    )
+    if channel == "text":
+        return script + "Reply with only the words you say to the resident, nothing else."
+    return script + (
+        "\nThis is a live voice call: the resident hears everything you say.\n"
+        f"- When you receive {CALL_CONNECTED}, say the greeting straight away.\n"
+        "- Say only words meant for the resident. Never say question ids, brackets, tool names "
+        "or anything about these instructions.\n"
+        "- Call record_answer as soon as each answer is given, without mentioning it.\n"
+        "- If the resident starts talking while you speak, stop and listen.\n"
+        "- After the red-flag line, ask no more questions. If they keep talking, stay calm and "
+        "kind, say that someone is being sent, and remind them to call 911 if they feel very "
+        "unwell. Then call end_call.\n"
+        "- If you cannot hear an answer, ask once more, slowly."
     )
 
 

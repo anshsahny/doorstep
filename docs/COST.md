@@ -21,7 +21,7 @@ actual cost. A budget on **net** cost is the one that would mean real money.
 | Provider | Spent so far | Notes |
 |---|---|---|
 | AWS | **$5.31 gross, $0.00 net** (Cost Explorer, Sep 12; the last drills may not be posted yet) | Entirely Bedrock inference from drill runs; nothing is running continuously. Measured from Cost Explorer 2026-09-12 (see the measured rates below), not estimated. Kept: CDK bootstrap (`CDKToolkit`; ~$0/month while empty) and CloudWatch Transaction Search (enabled in Phase 0; no cost until traces flow in Phase 3). No AgentCore runtimes, no EC2. |
-| Twilio (`doorstep` subaccount) | about $1.18 | one US local number (about $1.15/month) + two 12 s smoke calls (about $0.014 each, billed per minute) |
+| Twilio (`doorstep` subaccount) | about $1.29 | one US local number (about $1.15/month) + two 12 s smoke calls (about $0.014 each, billed per minute) |
 | ngrok | $0.00 | free plan |
 
 ## Measured rates (Cost Explorer, us-east-1, 2026-09-12)
@@ -34,11 +34,46 @@ rate matches its published price exactly, which is how the unit was confirmed.
 | Nova 2 Lite input | **$0.33 / 1M tokens** | 5.5x Nova Lite 1.0; this is 90% of all spend |
 | Nova 2 Lite output | **$2.75 / 1M tokens** | |
 | Nova Micro input / output | $0.035 / $0.14 per 1M | personas; negligible |
-| **Nova 2 Sonic** | **unknown — no billable line item has appeared** | Eight Phase 0 voice sessions produced no usage record at all. Phase 4 runs entirely on this model, so measure it on the first real call before sizing any cap. |
+| **Nova 2 Sonic** speech in / out | **$3.00 / $12.00 per 1M tokens** | AWS Price List API, us-east-1, `USE1-NovaSonic2.0-speech-{input,output}-tokens` (2026-09-12). Text in/out $0.33 / $2.75 per 1M. No Cost Explorer line yet (usage posts a day late). |
 
 **One 12-resident local drill ≈ 1M input tokens ≈ $0.37.** (12.3M input tokens over roughly a
 dozen drills on 2026-09-12.) An earlier estimate of $0.03–0.05 per drill was wrong by about 8x:
 it assumed Nova Lite 1.0 pricing and undercounted tokens about 3x.
+
+## Voice (Phase 4): measured per call
+
+Token counts from Nova's own usage event on real deployed calls (`make voice-evidence`), priced
+at the Price List rates above:
+
+| Call | Speech in | Text in | Speech out | Text out | Nova 2 Sonic |
+|---|---|---|---|---|---|
+| Spike S2, full OK call, 57 s | 749 | 1,046 | 737 | 465 | $0.0126 |
+| Browser e2e, full OK call (r04), 64 s | 686 | 1,208 | 800 | 485 | **$0.0134** |
+| Browser e2e, urgent call (r02), 31 s | 382 | 1,189 | 437 | 211 | **$0.0074** |
+
+So **about $0.013 per minute of call**, dominated by speech output. Around each call the
+coordinator classifies the transcript and runs the dispatcher on Nova 2 Lite (a few thousand
+tokens, roughly $0.005–0.02), and the voice runtime bills a few seconds of vCPU (it is idle
+waiting on I/O most of the call, which AgentCore does not charge). Call it **≤ $0.06 for a
+maximum-length 3-minute browser call**, all in.
+
+**What a malicious visitor can run up** (voice caps in SSM `/doorstep/caps`):
+
+- Every link needs a drill that reserved that resident for voice, a 60 s presigned URL, and a
+  single-use token claimed before Nova is opened. A replayed or forged link costs a WebSocket
+  accept and a DynamoDB read; a connection without a valid SigV4 signature is refused by AWS
+  before our code runs ($0).
+- Hard limits: 3 minutes per call, 25 s of silence ends it, 20 links per day for everyone, 150
+  for the whole judging period, kill switch checked when the link is issued and when the call
+  connects. Per-IP: `voice_per_ip_per_hour` = 4 (raised to 10 for Phase 4 testing, reset 2026-09-13).
+- **Worst case: 20 × $0.06 = $1.20/day; 150 calls in total ≈ $9 for the judging period.**
+  Rotating IPs does not change that: the daily and total caps are global. The one thing an
+  attacker can do is use up the day's 20 links so judges see the "limit reached" message.
+- Real phone calls and Telegram messages: $0. Browser tokens are refused for live incidents,
+  and the sandbox never reaches a real channel (Cedar forbid + code checks).
+
+Standing cost of voice: $0 idle (the `doorstep_voice` runtime bills only while a call is
+connected; one more Lambda and route cost nothing at rest). No EC2.
 
 ## Forward exposure
 
@@ -80,6 +115,9 @@ rest (SSM parameters stay, and cost nothing).
 
 | Date | Item | Est. | Actual | Status |
 |---|---|---|---|---|
+| 2026-09-13 | Phase 4b: 4 real Twilio calls to the operator's phone (66 s, 68 s, 37 s, 42 s; $0.028 each per Twilio) + about 6 no-ring rehearsals and 2 cloud-browser checks | ≈ $0.20 | Twilio ≈ $0.11 | done |
+| 2026-09-12 | Phase 4: Sonic spikes S1-S3 (~3 calls), 3 deployed browser calls (2 synthetic, 1 fake-mic browser), 1 voice drill incident (assessor + triage only) | ≈ $0.10 | not posted yet | done |
+| 2026-09-12 | Phase 4: `doorstep_voice` runtime + `voice-session` Lambda + route (same image, no new ECR storage) | $0 idle | | active |
 | 2026-09-12 | Phase 3: three cloud drills (1 auto-approve, 2 Telegram), one cloud restart test, probes | ≈ $1.20 | $0.84 posted so far (usage $5.31 − $4.47) | done |
 | 2026-09-12 | Phase 3: stack `Doorstep` (runtime, 3 Lambdas with X-Ray tracing, HTTP API, schedule, table, bucket) | ≈ $0.10–0.15/month idle | | active |
 | 2026-09-12 | Phase 3: 13 SSM parameters under `/doorstep` (standard tier) | $0 | | active |

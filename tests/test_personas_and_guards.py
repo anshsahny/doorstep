@@ -48,7 +48,9 @@ def test_no_hazard_words_in_the_agent_package_source() -> None:
     """SPEC §3a: nothing hazard-specific in agents, tools, policies or prompts; only in profiles."""
     pattern = re.compile(r"\b(" + "|".join(re.escape(w) for w in HAZARD_WORDS) + r")\b", re.I)
     offenders = []
-    for path in sorted(PACKAGE.rglob("*.py")):
+    for path in sorted(
+        [*PACKAGE.rglob("*.py"), *(ROOT / "voice" / "doorstep_voice").rglob("*.py")]
+    ):
         if path.name == "config.py":
             continue  # configuration picks the active profile; it is not agent logic
         for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):

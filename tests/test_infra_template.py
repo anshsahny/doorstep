@@ -39,6 +39,10 @@ ALLOWED_ENV = {
     "DOORSTEP_MODEL_AGENT",
     "DOORSTEP_MODEL_PERSONA",
     "DOORSTEP_RUNTIME_ARN",
+    "DOORSTEP_SERVICE",
+    "DOORSTEP_COORDINATOR_ARN",
+    "DOORSTEP_VOICE_RUNTIME_ARN",
+    "DOORSTEP_CHECKIN_QUEUE_URL",
     "ORG_LAT",
     "ORG_LNG",
 }
@@ -159,3 +163,52 @@ def test_the_runtime_build_context_is_an_allowlist(tmp_path: Path) -> None:
     assert not any(".env" in p.name for p in staged.rglob("*"))
     assert not any(part.startswith(".env") for part in INCLUDE)
     assert not (staged / ".sessions").exists() and not (staged / "node_modules").exists()
+
+
+def test_the_voice_runtime_streams_one_model_and_holds_no_channel_secret(template) -> None:
+    voice = [st for lid, st in statements(template) if lid.startswith("VoicePolicy")]
+    text = json.dumps(voice)
+    assert "foundation-model/amazon.nova-2-sonic-v1:0" in text and "nova-2-lite" not in text
+    assert "telegram" not in text and "twilio" not in text and "captain_passcode" not in text
+    assert "sessions/*" not in text, "no access to the coordinator's paused sessions"
+    writes = [st for st in voice if "dynamodb:PutItem" in as_list(st["Action"])]
+    assert writes and all(
+        st["Condition"]["ForAllValues:StringLike"]["dynamodb:LeadingKeys"] == ["CLAIM#VOICE#*"]
+        for st in writes
+    )
+    runtimes = resources(template, "AWS::BedrockAgentCore::Runtime")
+    voice_rt = next(
+        r for r in runtimes.values() if r["Properties"]["AgentRuntimeName"] == "doorstep_voice"
+    )
+    assert voice_rt["Properties"]["RequestHeaderConfiguration"]["RequestHeaderAllowlist"] == [
+        "X-Amzn-Bedrock-AgentCore-Runtime-Custom-Voice-Token"
+    ]
+
+
+def test_the_voice_link_function_can_presign_voice_sessions_and_nothing_else(template) -> None:
+    link = [st for lid, st in statements(template) if lid.startswith("voicesessionRole")]
+    actions = {a for st in link for a in as_list(st["Action"])}
+    assert "bedrock-agentcore:InvokeAgentRuntimeWithWebSocketStream" in actions
+    assert "bedrock-agentcore:InvokeAgentRuntime" not in actions
+    assert "dynamodb:PutItem" not in actions
+
+
+def test_only_the_dialer_holds_twilio_credentials_and_it_cannot_reach_the_runtime(template) -> None:
+    by_role: dict[str, str] = {}
+    for lid, st in statements(template):
+        by_role[lid] = by_role.get(lid, "") + json.dumps(st)
+    holders = sorted(lid for lid, text in by_role.items() if "twilio/subaccount_token" in text)
+    assert holders and all(lid.startswith("checkinworkerRole") for lid in holders), holders
+    dialer = "".join(text for lid, text in by_role.items() if lid.startswith("checkinworkerRole"))
+    assert "bedrock-agentcore" not in dialer and "bedrock:" not in dialer
+    assert "CLAIM#DIALED#*" in dialer
+
+
+def test_the_call_queue_never_retries_a_real_call(template) -> None:
+    queues = resources(template, "AWS::SQS::Queue")
+    jobs = next(
+        q for q in queues.values() if q["Properties"].get("QueueName") == "doorstep-checkin-jobs"
+    )
+    assert jobs["Properties"]["RedrivePolicy"]["maxReceiveCount"] == 1
+    runtime = [st for lid, st in statements(template) if lid.startswith("RuntimePolicy")]
+    assert any("sqs:SendMessage" in as_list(st["Action"]) for st in runtime)

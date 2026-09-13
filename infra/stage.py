@@ -13,7 +13,7 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-INCLUDE = ["pyproject.toml", "uv.lock", "README.md", "agent", "data", "evals/personas"]
+INCLUDE = ["pyproject.toml", "uv.lock", "README.md", "agent", "voice", "data", "evals/personas"]
 SKIP = shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store", ".env*", "*.egg-info")
 
 
@@ -70,6 +70,13 @@ def stage_lambdas(dest: Path | None = None) -> Path:
     if target.exists():
         shutil.rmtree(target)
     shutil.copytree(ROOT / "api" / "doorstep_api", target, ignore=SKIP)
+    # The token format has one implementation, shared with the voice runtime (stdlib only).
+    voice = dest / "doorstep_voice"
+    if voice.exists():
+        shutil.rmtree(voice)
+    voice.mkdir()
+    for name in ("__init__.py", "tokens.py"):
+        shutil.copy2(ROOT / "voice" / "doorstep_voice" / name, voice / name)
     return dest
 
 

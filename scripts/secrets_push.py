@@ -38,6 +38,10 @@ FROM_ENV = {
     "INTERNAL_HMAC_SECRET": "internal_hmac_secret",
     "CALL_ALLOWLIST": "call_allowlist",
     "NWS_USER_AGENT": "nws_user_agent",
+    "OPERATOR_TEST_NUMBER": "operator_test_number",
+    "TWILIO_SUBACCOUNT_SID": "twilio/subaccount_sid",
+    "TWILIO_SUBACCOUNT_TOKEN": "twilio/subaccount_token",
+    "TWILIO_FROM_NUMBER": "twilio/from_number",
 }
 GENERATABLE = ("CAPTAIN_PASSCODE", "INTERNAL_HMAC_SECRET")
 IF_ABSENT = {

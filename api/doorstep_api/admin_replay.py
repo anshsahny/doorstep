@@ -18,6 +18,7 @@ from . import common
 from .common import DEPS, body_of, header, log, response, runtime_session_id, same_secret
 
 IDEMPOTENCY_KEY = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
+VOICE_RESIDENT = re.compile(r"^r[0-9]{2}$")
 DEFAULT_CAPS = {"per_ip_per_10min": 2, "daily": 10, "total": 60, "passcode_failures_per_hour": 10}
 
 
@@ -60,9 +61,16 @@ def handler(event: dict[str, Any], context: Any = None, deps: common.Deps | None
             "auto_approve": bool(body.get("auto_approve", False)),
             "decision_ttl_minutes": min(max(float(body.get("decision_ttl_minutes", 15)), 0.5), 30),
             "timeout_seconds": min(max(float(body.get("timeout_seconds", 240)), 60), 1800),
+            "voice_residents": sorted({str(r) for r in body.get("voice_residents") or []}),
         }
+        if len(options["voice_residents"]) > 12 or not all(
+            VOICE_RESIDENT.match(r) for r in options["voice_residents"]
+        ):
+            raise ValueError("voice_residents")
     except (TypeError, ValueError):
-        return response(400, {"error": "Options must be booleans and numbers."})
+        return response(
+            400, {"error": "Options must be booleans, numbers and a list of resident ids."}
+        )
 
     incident_id = f"drill-{now:%Y%m%d-%H%M%S}-{secrets.token_hex(2)}"
     idem = f"IDEM#replay#{key}"
