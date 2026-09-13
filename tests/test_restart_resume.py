@@ -30,7 +30,9 @@ CAPTAIN_CHAT = "42424242"
 
 
 @pytest.fixture(params=["memory", "dynamo"])
-def backend(request: pytest.FixtureRequest) -> Iterator[dict[str, str]]:
+def backend(
+    request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[dict[str, str]]:
     """Extra environment for both halves: nothing for memory, a shared moto server for dynamo."""
     if request.param == "memory":
         yield {}
@@ -56,12 +58,15 @@ def backend(request: pytest.FixtureRequest) -> Iterator[dict[str, str]]:
         "AWS_REGION": "us-east-1",
         "AWS_DEFAULT_REGION": "us-east-1",
     }
-    kw = {"region_name": "us-east-1", "aws_access_key_id": "testing"}
-    kw["aws_secret_access_key"] = "testing"
-    dynamo = boto3.client("dynamodb", endpoint_url=url, **kw)
+    # A test must not depend on the developer's AWS profile: CI has none (found 2026-09-12).
+    monkeypatch.delenv("AWS_PROFILE", raising=False)
+    aws = boto3.session.Session(
+        region_name="us-east-1", aws_access_key_id="testing", aws_secret_access_key="testing"
+    )
+    dynamo = aws.client("dynamodb", endpoint_url=url)
     create_table(dynamo, table)
     DynamoBackend(table, "juniper-court", client=dynamo).seed_static(DATA)
-    boto3.client("s3", endpoint_url=url, **kw).create_bucket(Bucket=bucket)
+    aws.client("s3", endpoint_url=url).create_bucket(Bucket=bucket)
     env["_S3_URL"] = url
     try:
         yield env
@@ -114,13 +119,9 @@ def test_the_paused_session_is_stored_between_the_two_processes(
 ) -> None:
     assert run_half("a", tmp_path, backend).returncode == 0
     if backend:
-        s3 = boto3.client(
-            "s3",
-            endpoint_url=backend["_S3_URL"],
-            region_name="us-east-1",
-            aws_access_key_id="testing",
-            aws_secret_access_key="testing",
-        )
+        s3 = boto3.session.Session(
+            region_name="us-east-1", aws_access_key_id="testing", aws_secret_access_key="testing"
+        ).client("s3", endpoint_url=backend["_S3_URL"])
         bucket = backend["DOORSTEP_SESSIONS_BUCKET"]
         keys = [o["Key"] for o in s3.list_objects_v2(Bucket=bucket)["Contents"]]
         latest = [k for k in keys if k.endswith("snapshot_latest.json")]

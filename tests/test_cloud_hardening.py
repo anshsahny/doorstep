@@ -67,6 +67,19 @@ def test_the_bot_token_never_reaches_the_logs(caplog) -> None:
     assert logging.getLogger("httpx").level == logging.WARNING
 
 
+def test_the_doorstep_profile_is_only_defaulted_where_it_exists(tmp_path, monkeypatch) -> None:
+    from doorstep_agent.config import _profile_exists
+
+    empty = tmp_path / "empty"
+    empty.write_text("")
+    monkeypatch.setenv("AWS_CONFIG_FILE", str(empty))
+    monkeypatch.setenv("AWS_SHARED_CREDENTIALS_FILE", str(empty))
+    assert _profile_exists("doorstep") is False
+    (tmp_path / "config").write_text("[profile doorstep]\nregion = us-east-1\n")
+    monkeypatch.setenv("AWS_CONFIG_FILE", str(tmp_path / "config"))
+    assert _profile_exists("doorstep") is True
+
+
 def test_cloud_mode_is_explicit(monkeypatch) -> None:
     monkeypatch.delenv("AWS_LAMBDA_FUNCTION_NAME", raising=False)
     monkeypatch.delenv("DOORSTEP_ENV", raising=False)

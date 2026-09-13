@@ -39,6 +39,18 @@ before 11:27 PDT, when Phase 3 planning started: about 1.5 h ahead of the Sat 1 
 
 ## Log (newest first)
 
+### 2026-09-12 evening — CI fix after the Phase 3 commit
+- CI failed 2 of 277: `test_restart_resume.py[dynamo]` raised `ProfileNotFound: doorstep`.
+  `config.py` defaulted `AWS_PROFILE=doorstep` in every non-AWS process, and CI has no AWS
+  profile, so boto3 failed even for clients given explicit moto keys. It passed locally only
+  because the profile exists on Ansh's Mac.
+- Reproduced locally with `AWS_CONFIG_FILE`/`AWS_SHARED_CREDENTIALS_FILE` pointed at an empty file.
+  Fixed: the profile is defaulted only when it exists in the shared config or credentials file
+  (`config._profile_exists`, tested), and the restart fixture removes `AWS_PROFILE` and uses an
+  explicit session, like the other moto fixtures.
+- Verified how: 278 passed both CI-like (no profile files, no `AWS_PROFILE`, `.env` set aside)
+  and with `make check` locally; local processes still get `AWS_PROFILE=doorstep`.
+
 ### 2026-09-12 about 16:50 PDT — Gate 3 passed with real Telegram taps; the first run found two bugs
 - **First Telegram drill** (`drill-20260912-232958-a26a`): Ansh answered 6 captain decisions
   through the webhook in 28 s, 0 violations — but it scored FAIL on "all settled", and correctly:
