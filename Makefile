@@ -100,6 +100,35 @@ trace: ## print the spans of one incident's runtime session (ARGS=<incident id>)
 poller: ## ARGS=on|off: enable or disable the 10-minute NWS alert schedule
 	$(CLOUD) $(PY) scripts/cloud/poller.py $(ARGS)
 
+# --- Phase 4: voice ---
+
+voice-incident: ## start a drill whose residents wait for a voice call (ARGS="--telegram --residents r01,r04")
+	$(CLOUD) $(PY) scripts/voice/voice.py incident $(ARGS)
+
+voice-page: ## serve the browser voice test page on http://localhost:5174
+	$(CLOUD) $(PY) scripts/voice/voice.py page
+
+voice-e2e: ## synthetic browser call through the deployed path (ARGS="--incident <id> --resident r04 --script ok|urgent")
+	$(CLOUD) $(PY) scripts/voice/voice.py e2e $(ARGS)
+
+voice-evidence: ## what an incident recorded for each voice call (ARGS=<incident id>)
+	$(CLOUD) $(PY) scripts/voice/voice.py evidence $(ARGS)
+
+phone-bridge: ## run the Twilio Media Streams bridge on :8765 behind ngrok (leave it running)
+	$(CLOUD) $(PY) scripts/voice/phone.py bridge
+
+phone-preflight: ## read-only checks before a real call (no phone rings)
+	$(CLOUD) $(PY) scripts/voice/phone.py preflight
+
+phone-rehearse: ## whole phone chain with a synthetic Twilio client, no phone rings (ARGS="--script urgent")
+	$(CLOUD) $(PY) scripts/voice/phone.py rehearse $(ARGS)
+
+phone-call: ## REAL call to the operator's own phone (ARGS=--telegram)
+	$(CLOUD) $(PY) scripts/voice/phone.py call $(ARGS)
+
+phone-evidence: ## what an incident recorded for a phone call (ARGS=<incident id>)
+	$(CLOUD) $(PY) scripts/voice/voice.py evidence $(ARGS)
+
 evals: ## Phase 6: run eval suites, write evals/REPORT.md
 	@echo "make evals arrives in Phase 6"; exit 1
 

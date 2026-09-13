@@ -19,9 +19,23 @@ from .profiles import HazardProfile
 from .state_machine import CasePolicy, Clock
 from .store import Repository
 
-__all__ = ["OutboundMessage", "RunContext", "StoreOutbox", "resolve_ref"]
+__all__ = ["OutboundMessage", "RunContext", "StoreOutbox", "normalize_number", "resolve_ref"]
 
 _REF = re.compile(r"^env:([A-Z0-9_]+)(?:\[(\d+)\])?$")
+_E164 = re.compile(r"^\+[1-9][0-9]{7,14}$")
+
+
+def normalize_number(raw: str | None) -> str | None:
+    """A phone number as E.164, or None. Spaces, dashes, dots and brackets are ignored.
+
+    Allowlist checks compare normalized numbers only, so "+1 (503) 555-0100" and "+15035550100"
+    are the same number and a formatting trick cannot slip a number past the list. Keep in step
+    with `doorstep_api.common.normalize_number` (a test compares the two).
+    """
+    if not raw:
+        return None
+    cleaned = re.sub(r"[\s().-]", "", raw)
+    return cleaned if _E164.match(cleaned) else None
 
 
 class StoreOutbox(list):
@@ -63,6 +77,9 @@ class RunContext:
     # evals set it to drive the real agents — real tools, hooks, policies and sessions — without
     # a network call; production leaves it None.
     model_override: Any = None
+    # Where a permitted real call is queued for the dialer (`checkin_worker`). None everywhere
+    # except the cloud coordinator, so no drill, test or eval can ever reach Twilio.
+    call_queue: Any = None
 
     @property
     def channel(self) -> str:
@@ -74,7 +91,12 @@ class RunContext:
     @property
     def call_allowlist(self) -> list[str]:
         raw = os.getenv("CALL_ALLOWLIST", "")
-        return [n.strip() for n in raw.split(",") if n.strip()]
+        return [n for n in (normalize_number(x) for x in raw.split(",")) if n]
+
+    @property
+    def operator_test_number(self) -> str | None:
+        """The operator's own phone, exempt from quiet hours on operator test incidents only."""
+        return normalize_number(os.getenv("OPERATOR_TEST_NUMBER"))
 
     def local_hour(self) -> int:
         return self.clock.now().astimezone(ZoneInfo(self.org.timezone)).hour

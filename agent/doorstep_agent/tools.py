@@ -29,7 +29,7 @@ from .models import (
     Volunteer,
 )
 from .risk import score_all
-from .runtime import OutboundMessage, RunContext, resolve_ref
+from .runtime import OutboundMessage, RunContext, normalize_number, resolve_ref
 from .state_machine import ALLOWED, IllegalTransition, transition
 from .store import NotFound
 
@@ -271,9 +271,10 @@ def place_checkin_call(resident_id: str, reason: str, tool_context: ToolContext)
         )
     try:
         r = ctx.store.resident(resident_id)
+        case = _case(ctx, resident_id)
     except NotFound:
         return f"error: unknown resident {resident_id}"
-    number = resolve_ref(r.phone_ref)
+    number = normalize_number(resolve_ref(r.phone_ref))
     if not number or number not in ctx.call_allowlist:
         return _refuse(
             ctx,
@@ -290,7 +291,30 @@ def place_checkin_call(resident_id: str, reason: str, tool_context: ToolContext)
             "resident has not consented to calls",
             resident_id=resident_id,
         )
-    return "real calls arrive in Phase 4; nothing was dialled"
+    if ctx.call_queue is None:
+        return _refuse(
+            ctx,
+            tool_context,
+            "place_checkin_call",
+            "no dialer is configured in this process",
+            resident_id=resident_id,
+        )
+    if case.state not in (CaseState.QUEUED, CaseState.NO_ANSWER, CaseState.UNCLEAR):
+        return f"error: case {resident_id} is {case.state}, not waiting for a call"
+    attempt = case.attempts + 1
+    if not ctx.store.claim(f"DIAL#{ctx.incident_id}#{resident_id}#{attempt}"):
+        return f"a call for {resident_id} attempt {attempt} is already queued"
+    # The job names the resident, never the number: the dialer resolves and re-checks it.
+    ctx.call_queue.enqueue(
+        {"incident_id": ctx.incident_id, "resident_id": resident_id, "attempt": attempt}
+    )
+    ctx.audit.record(
+        actor=_actor(tool_context),
+        type="checkin",
+        resident_id=resident_id,
+        reason=f"real check-in call queued (attempt {attempt}): {reason}",
+    )
+    return f"call to {resident_id} queued (attempt {attempt})"
 
 
 @tool(context=True)
@@ -773,13 +797,19 @@ def flag_urgent(reason: str, tool_context: ToolContext) -> str:
     """
     call = _call(tool_context)
     call.setdefault("urgent", []).append(reason)
-    ctx: RunContext = tool_context.invocation_state["ctx"]
-    ctx.audit.record(
-        actor=_actor(tool_context),
-        type="checkin",
-        resident_id=tool_context.invocation_state.get("resident_id"),
-        reason=f"flag_urgent: {reason}",
-    )
+    ctx: RunContext | None = tool_context.invocation_state.get("ctx")
+    if ctx is not None:
+        ctx.audit.record(
+            actor=_actor(tool_context),
+            type="checkin",
+            resident_id=tool_context.invocation_state.get("resident_id"),
+            reason=f"flag_urgent: {reason}",
+        )
+    # A live call pages the captain now, not after hang-up. The voice session passes a callback
+    # that must return at once (it only schedules the page), because the call keeps talking.
+    on_urgent = tool_context.invocation_state.get("on_urgent")
+    if callable(on_urgent):
+        on_urgent(reason)
     return "flagged; say the red-flag line and end the questions"
 
 

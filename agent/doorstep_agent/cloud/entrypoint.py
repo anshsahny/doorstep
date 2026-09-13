@@ -27,6 +27,21 @@ app = BedrockAgentCoreApp()
 _coordinator: Coordinator | None = None
 
 
+class SqsCallQueue:
+    """Permitted real calls go to `checkin-jobs`; the `checkin_worker` Lambda dials them."""
+
+    def __init__(self, queue_url: str) -> None:
+        import boto3
+
+        self.queue_url = queue_url
+        self.client = boto3.client("sqs")
+
+    def enqueue(self, job: dict[str, Any]) -> None:
+        import json
+
+        self.client.send_message(QueueUrl=self.queue_url, MessageBody=json.dumps(job))
+
+
 class AppTracker:
     """Background tasks reported to the runtime, so `/ping` says `HealthyBusy` while they run."""
 
@@ -49,6 +64,11 @@ def build_coordinator() -> Coordinator:
         cfg=cfg,
         tracker=AppTracker(),
         bot_factory=lambda: Bot(os.environ["TELEGRAM_BOT_TOKEN"]),
+        call_queue=(
+            SqsCallQueue(os.environ["DOORSTEP_CHECKIN_QUEUE_URL"])
+            if os.getenv("DOORSTEP_CHECKIN_QUEUE_URL")
+            else None
+        ),
     )
 
 
@@ -61,4 +81,10 @@ async def invoke(payload: Any, context: Any) -> dict[str, Any]:
 
 
 if __name__ == "__main__":
-    app.run()
+    # One image, two runtimes: `doorstep_voice` sets DOORSTEP_SERVICE=voice.
+    if os.getenv("DOORSTEP_SERVICE") == "voice":
+        from doorstep_voice.entrypoint import app as voice_app
+
+        voice_app.run()
+    else:
+        app.run()

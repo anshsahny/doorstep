@@ -26,6 +26,7 @@ RUNTIME_SECRETS: dict[str, str] = {
     "TELEGRAM_CAPTAIN_CHAT_ID": "telegram/captain_chat_id",
     "TELEGRAM_VOLUNTEER_CHAT_IDS": "telegram/volunteer_chat_ids",
     "CALL_ALLOWLIST": "call_allowlist",
+    "OPERATOR_TEST_NUMBER": "operator_test_number",
 }
 
 

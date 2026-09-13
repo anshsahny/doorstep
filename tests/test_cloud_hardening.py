@@ -40,7 +40,11 @@ def test_hydrate_env_fills_the_names_the_code_reads(ssm, monkeypatch, caplog) ->
 
     assert os.environ["TELEGRAM_BOT_TOKEN"] == FAKE_TOKEN
     assert os.environ["TELEGRAM_CAPTAIN_CHAT_ID"] == "4242"
-    assert sorted(missing) == ["CALL_ALLOWLIST", "TELEGRAM_VOLUNTEER_CHAT_IDS"]
+    assert sorted(missing) == [
+        "CALL_ALLOWLIST",
+        "OPERATOR_TEST_NUMBER",
+        "TELEGRAM_VOLUNTEER_CHAT_IDS",
+    ]
     assert FAKE_TOKEN not in caplog.text and "4242" not in caplog.text
 
 

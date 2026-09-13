@@ -48,9 +48,16 @@ def main() -> int:
     secrets = secrets_by_name(aws.client("ssm"))
     groups = [
         f"/aws/bedrock-agentcore/runtimes/{out['RuntimeId']}-DEFAULT",
+        *(
+            [f"/aws/bedrock-agentcore/runtimes/{out['VoiceRuntimeArn'].rsplit('/', 1)[1]}-DEFAULT"]
+            if out.get("VoiceRuntimeArn")
+            else []
+        ),
         "/aws/lambda/doorstep-telegram-webhook",
         "/aws/lambda/doorstep-admin-replay",
         "/aws/lambda/doorstep-alert-poller",
+        "/aws/lambda/doorstep-voice-session",
+        "/aws/lambda/doorstep-checkin-worker",
         "aws/spans",
     ]
     start = int((time.time() - args.hours * 3600) * 1000)
