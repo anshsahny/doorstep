@@ -1,6 +1,6 @@
 # Doorstep — progress log
 
-Current phase: **6 — Evals, hardening, docs**: work done and verified locally; waiting for Ansh to commit/push (CI), deploy, and decide on going public.
+Current phase: **6 — Evals, hardening, docs**: all tasks done and verified (repo public); Gate 6 3 of 4 criteria met (recall 90%). Next: Phase 7 on Ansh's go.
 Next gate: **Gate 6**
 Time now vs plan: Phase 0 ran Fri Sep 11 00:00–12:35 PDT (planned Thu evening). Phase 1 ran Fri
 17:45–21:20 PDT, about 3.5 h of its 5 h box. Phase 2 started Sat 08:30 PDT and was committed
@@ -23,7 +23,7 @@ before 11:27 PDT, when Phase 3 planning started: about 1.5 h ahead of the Sat 1 
 | 4a | 3 browser check-ins | ✅ passed | **Three consecutive real browser calls by Ansh** (Chrome, mic, headphones) through the deployed path (`/voice/session` → presigned WebSocket → `doorstep_voice` runtime → Nova 2 Sonic → coordinator), incident `drill-20260913-034202-acd6`, on the final build: **Rose (r01) OK**, 4 answers, 2 barge-ins, result applied **2.2 s** after hang-up; **George (r10) NEEDS_HELP** (ride, cooling), 3 barge-ins, volunteer task raised, applied **1.5 s** after hang-up; **Evelyn (r09) URGENT mid-call**: the live backstop matched "dizzy and confused", **the captain's decision `dec-003` existed at 04:06:16.6, 6 s before hang-up at 04:06:22**, the line was held until it was out, final classification URGENT applied **1.2 s** after hang-up. Before these: Ansh's C2 call (Mei-Ling OK, 2.5 s) and three automated `make voice-e2e` calls (OK 1.5 s and 1.8 s; urgent paged 8.2 s before hang-up). `make check` 322 tests; `make scan-logs` 0 matches. Sonic ≈ $0.010–0.016 per call. | 2026-09-12 |
 | 4b | 2 real calls + mid-call escalation | ✅ passed | Real calls from the Twilio `doorstep` subaccount to Ansh's own allowlisted phone, through the `checkin_worker` dialer and the phone bridge (ngrok), Cedar allowing each only through the operator quiet-hours exception. **Call 1** `live-20260913-044054-c586`: Twilio `completed` 66 s, full protocol, OK, result applied 1.5 s after hang-up. **Call 2** `live-20260913-074003-405b` (on speaker, recorded): `completed` 68 s, full protocol, OK, RESOLVED. **Call 3** `live-20260913-080655-3cec` (Telegram on, recorded): "I feel dizzy and confused, I'm not sure what day it is". The live backstop paged at 08:07:35.0, **the captain's Telegram message was sent at 08:07:36.7, and Twilio ended the call at 08:07:52: 15.3 s before hang-up**. URGENT, ESCALATED, final classification applied 1.1 s after hang-up. Before these: no-ring rehearsals through the deployed chain, where Cedar denied non-allowlisted residents in the cloud. `make check` 354 tests. | 2026-09-13 |
 | 5 | Judge flow < 4 min, Lighthouse a11y ≥ 90 | ✅ passed | **Lighthouse accessibility 100** on all 7 pages, desktop and mobile (`make lighthouse`, deployed site). **Keyboard only** in real Chrome (puppeteer, Tab/Shift+Tab/Enter/Space, no mouse): recorded 19/19, **live 22/22** on the deployed site: drill started by Enter, first decision at 25 s, answered by keyboard at 27 s, report at 28 s, every focus stop ringed, 0 console errors (`make keyboard-pass ARGS=--live`). **Caps** 14/14 on the deployed API (`make cap-test`): per-IP, everyone-per-10-min, daily and total drill caps, voice per-IP/daily/total, no-token 401, passcode lockout (right passcode refused while locked), kill switch on drills/voice/answers; counters restored. **Judge path by pointer** on the deployed site (in-app browser): drill 5.4 s after the click, synthetic voice call for Mei-Ling paged the captain 21 s before hang-up, two dashboard answers applied as `captain:cap-maria` / `volunteer:vol-tom` with `source: web`, report "all 12 in 1 min 30 s", 0 console errors. `make check` 383 tests; `make web-test` 9. **Human runs (Ansh, fresh incognito, own voice, stopwatch from opening the URL to the report headline): laptop Chrome 1:39** (`sandbox-20260913-181317-c0e82c`: call began 10.8 s after the drill started, captain paged 33.5 s, call ended 48.1 s so the page was out 14.6 s before hang-up, all 12 reached 47.6 s, his dashboard answer applied 77.7 s; 0 console errors) and **phone Safari on cellular 1:07** (`sandbox-20260913-181744-7bf558`: call 8.1 s, paged 30.2 s, ended 44.4 s so 14.2 s before hang-up, all 12 reached 47.4 s, answer applied 54.4 s). Both answers recorded as `captain:cap-maria` with `source: web`. | 2026-09-13 |
-| 6 | Evals targets, CI green, clean-clone setup | ☐ **not passed** | Red team 0 violations, 20/20 denied: met. Red-flag recall 90.0% (27/30): **not met** (all 3 misses: red flag never spoken by the simulated resident). Clean clone: passed after one Makefile fix (setup, check without AWS, web-test, local drill). CI-identical run on commit 38358bb: 398 passed, gitleaks 30 commits clean (GitHub Actions runs on push). Deployed and web-deployed 2026-09-13 20:40 PDT. | 2026-09-13 |
+| 6 | Evals targets, CI green, clean-clone setup | ⚠️ **3 of 4 met** | Red team: 0 violations, 20/20 forbidden attempts denied with reasons ✅. CI green on `main` ✅. Clean clone (setup, check without AWS, web-test, local drill) ✅. **Red-flag recall 90.0% (27/30) vs 100% target ❌**: all 3 misses are calls where the simulated resident never said the red flag (evals/REPORT.md). Repo public, MIT detected, topics set, secret scanning + push protection on. | 2026-09-13 |
 | 7 | Submitted | ☐ | | |
 
 ## Smoke tests (Phase 0)
@@ -37,6 +37,30 @@ before 11:27 PDT, when Phase 3 planning started: about 1.5 h ahead of the Sat 1 
 | 5 | Telegram ping + button | ✅ PASS 2026-09-11 | Bot `@doorstep_agent_bot`; captain chat ID from the `--whoami` step. Message with 3 inline buttons sent; the `I'm handling it` callback arrived 7.5 s later via long polling, was answered, and the message was edited. First run timed out at 120 s with no tap; second run passed. |
 
 ## Log (newest first)
+
+### 2026-09-13 about 21:00 PDT — repo public; Phase 6 final verification
+- Verified how (everything read-only, from outside):
+  - GitHub: **public**, MIT License detected, topics `agents-for-humans`, `bedrock-agentcore`,
+    `strands-agents`, homepage = the live site, description set; secret scanning **enabled**, push
+    protection **enabled**.
+  - GitHub Actions on `main`: last four runs **success**, including both commits after the rewrite.
+  - Anonymous mirror clone of the public repo: 8 branches, 36 commits dated Sep 10–13, only no-reply
+    emails, 0 occurrences of the AWS account id, the work domain or the personal email in any
+    commit or file version, gitleaks full history **no leaks**.
+  - Public URLs: repo page, raw README, raw diagram and CI badge 200; all 31 README file links
+    resolve; all 12 external README links return 200; live site 200 with the Evidence page showing
+    the eval results.
+- PLAN Phase 6 tasks: evals (4 suites, before/after, REPORT.md + JSON) done; hardening (webhook
+  idempotency and backoff from Phases 3–4, DLQ and failed-call alarms, graceful Twilio failure,
+  `make cap-test` from Gate 5, CI green) done; docs (README, diagram, COST.md, disclosures, testing
+  instructions in SUBMISSION §4) done; clean clone done; go public done.
+- **Gate 6: 3 of 4 criteria met.** Red team 0 violations; CI green; clean-clone setup succeeds.
+  **Red-flag recall 90.0% (27/30), not the 100% target**: the three misses are check-ins where the
+  simulated resident never said the red flag. Accepting the gate with that criterion unmet, or
+  holding it, is Ansh's call.
+- Kept until Phase 7 is submitted: `~/Projects/doorstep-old` (pre-rewrite working copy, has `.env`)
+  and `~/Projects/doorstep-backup.git` (pre-rewrite mirror). Delete both afterwards: they hold the
+  old history.
 
 ### 2026-09-13 about 20:55 PDT — git history rewritten before going public
 - Ansh's decision: rewrite, not squash (the dated history is evidence that everything was built in
@@ -1027,8 +1051,8 @@ decision").
 - [ ] Phase 3: review and commit the working tree on `phase3`, then say "go" for Phase 4
 - [ ] Note: the bot is in webhook mode now; run `make telegram-webhook ARGS=delete` before any local `make telegram-drill`, and `ARGS=set` afterwards
 - [x] Phase 6: commit `phase6`; `make deploy` (dispatcher fixes + alarms); `make web-deploy` (2026-09-13)
-- [ ] Phase 6: subscribe an email to SNS `doorstep-ops-alerts`; push to `main` and check GitHub Actions
-- [ ] Before going public: decide on git history (AWS account id in old PROGRESS.md; commit author emails)
+- [x] Phase 6: SNS email subscription; push to `main`, CI green; history rewritten; repo public (2026-09-13)
+- [ ] After Phase 7 is submitted: delete `~/Projects/doorstep-old` and `~/Projects/doorstep-backup.git`
 - [ ] **Before submitting: swap in a real second Telegram account.** See "Second-number swap"
       below — it is one `.env` line, and it makes the role check visibly real in the demo.
 - [x] **Phase 5 Gate 5 (human half):** laptop 1:39, phone 1:07 (2026-09-13)
