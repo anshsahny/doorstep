@@ -38,6 +38,19 @@ before 11:27 PDT, when Phase 3 planning started: about 1.5 h ahead of the Sat 1 
 
 ## Log (newest first)
 
+### 2026-09-13 about 21:20 PDT — CI flake after the final commit: moto's read-back race (test fake)
+- CI failed 1 of 398: `test_ids_are_unique_under_threads[dynamo]`, 59 unique decision ids of 60.
+  Not our code: `allocate` is one `UpdateItem ADD` with `ReturnValues=UPDATED_NEW`, which real
+  DynamoDB computes atomically. moto's `DynamoHandler.update_item` gets its live stored item back
+  from the backend and serializes it afterwards; `tests/conftest.py` only locked the backend call,
+  so a concurrent `ADD` could land before the read-back and two threads saw the same counter.
+- Reproduced 5/5 by pausing 1 ms inside moto's `Item.to_json` (throwaway spike, not committed);
+  it had passed 25/25 locally without the pause. Fix: the conftest lock (re-entrant) now also
+  wraps moto's request handlers (`put_item`, `get_item`, `query`, `scan`, `update_item`,
+  `delete_item`, `transact_write_items`, `batch_write_item`, `batch_get_item`).
+- Verified how: with the pause, 0/10 failures (was 5/5); all 13 DynamoDB tests pass with the pause
+  (no deadlock); full suite CI-style (no AWS profile) 3 × 398 passed; ruff clean.
+
 ### 2026-09-13 about 21:00 PDT — repo public; Phase 6 final verification
 - Verified how (everything read-only, from outside):
   - GitHub: **public**, MIT License detected, topics `agents-for-humans`, `bedrock-agentcore`,

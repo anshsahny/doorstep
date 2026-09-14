@@ -36,18 +36,26 @@ def atomic_moto_dynamodb() -> Iterator[None]:
     """Give moto real DynamoDB's per-request atomicity.
 
     Real DynamoDB applies each request atomically: an `ADD` counter or a conditional put cannot
-    interleave with another. moto's in-memory backend reads an item, copies it and writes it back
-    with no lock, so two threads can both create a new counter at 1 or both win a claim. That made
-    the threaded store tests flaky on slower CI runners (reproduced 10/10 locally with
-    `sys.setswitchinterval(1e-6)`). Serializing each backend request fixes the fake, not our code:
-    the store's own threads, identity map and conditional writes still race each other for real.
+    interleave with another, and `ReturnValues` describes that request's own write. moto has no
+    lock, so two threads can both create a new counter at 1 or both win a claim. Serializing each
+    request fixes the fake, not our code: the store's own threads, identity map and conditional
+    writes still race each other for real.
+
+    The lock covers moto's whole request handler, not just the backend call. `update_item` returns
+    moto's live stored item and the handler reads `UPDATED_NEW` from it afterwards, so with only
+    the backend locked a concurrent `ADD` could land in between and two threads read back the same
+    counter (CI, 2026-09-13; reproduced 5/5 by pausing inside `Item.to_json`). The lock is
+    re-entrant because the handler calls the backend methods it also wraps.
     """
     from moto.dynamodb.models import DynamoDBBackend
+    from moto.dynamodb.responses import DynamoHandler
 
     lock = threading.RLock()
-    names = ("put_item", "get_item", "query", "scan", "update_item", "delete_item",
-             "transact_write_items")  # fmt: skip
-    originals = {name: getattr(DynamoDBBackend, name) for name in names}
+    backend_names = ("put_item", "get_item", "query", "scan", "update_item", "delete_item",
+                     "transact_write_items")  # fmt: skip
+    handler_names = (*backend_names, "batch_write_item", "batch_get_item")
+    originals = [(DynamoDBBackend, n, getattr(DynamoDBBackend, n)) for n in backend_names]
+    originals += [(DynamoHandler, n, getattr(DynamoHandler, n)) for n in handler_names]
 
     def serialized(method: Callable) -> Callable:
         @functools.wraps(method)
@@ -57,11 +65,11 @@ def atomic_moto_dynamodb() -> Iterator[None]:
 
         return call
 
-    for name, method in originals.items():
-        setattr(DynamoDBBackend, name, serialized(method))
+    for cls, name, method in originals:
+        setattr(cls, name, serialized(method))
     yield
-    for name, method in originals.items():
-        setattr(DynamoDBBackend, name, method)
+    for cls, name, method in originals:
+        setattr(cls, name, method)
 
 
 @pytest.fixture
