@@ -57,3 +57,6 @@ web/voice-test/config.js
 
 # eval task-result cache (re-scoring is free; delete to re-run the models)
 evals/.cache/
+
+# draw.io SVG export embeds every icon (over the 2 MB pre-commit limit); the .drawio source and PNG are committed
+docs/architecture.svg
