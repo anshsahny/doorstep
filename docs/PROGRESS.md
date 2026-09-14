@@ -38,6 +38,21 @@ before 11:27 PDT, when Phase 3 planning started: about 1.5 h ahead of the Sat 1 
 
 ## Log (newest first)
 
+### 2026-09-13 about 20:55 PDT — git history rewritten before going public
+- Ansh's decision: rewrite, not squash (the dated history is evidence that everything was built in
+  the submission period). `git filter-repo` on a mirror clone replaced the AWS account id in every
+  file version and mapped the work and personal emails to the GitHub no-reply address; force-pushed
+  all branches (`main`, `phase0`–`phase6`). Backup mirror kept outside the repo until Phase 7.
+- Verified how (before the push, on the rewritten mirror): 8 branches, 35 commits (unchanged),
+  commit dates Sep 10–13 identical to the backup, only no-reply author/committer emails, 0
+  occurrences of the account id, the work domain or the personal email in any commit message or
+  file version, gitleaks 35 commits no leaks. After the push: GitHub attributes all 16 commits on
+  `main` to `anshsahny`; commit hashes quoted earlier in this log predate the rewrite.
+- Found in the fresh working clone: `make setup` rewrote `package-lock.json` (npm pruned ~320
+  stale optional peer entries). `npm ci` is not a fix (it fails EBADPLATFORM on esbuild's optional
+  platform packages in that lockfile), so the regenerated lockfile is committed instead; a second
+  `npm install` leaves it unchanged.
+
 ### 2026-09-13 about 20:40 PDT — Phase 6 fixes, alarms and Evidence page deployed
 - Ansh ran `make deploy` (the first attempt failed inside Docker Desktop with an I/O error: the
   Mac had 248 MB free; retried after freeing space) and `make web-deploy`.
