@@ -50,7 +50,7 @@ Sources:
 
 Framing: the same heat dome hit Portland, which is why the replay uses the real NWS Portland warning from June 2021. Don't quote Oregon death figures unless you've verified them.
 
-## 4. Devpost text (draft — fill in bracketed numbers from REPORT.md)
+## 4. Devpost text (final, numbers from evals/REPORT.md, 2026-09-14 00:48 UTC run)
 
 **Name:** Doorstep
 **Tagline:** When a heat warning hits, Doorstep checks on every at-risk neighbour — and only asks a human when it matters.
@@ -59,31 +59,38 @@ Framing: the same heat dome hit Portland, which is why the replay uses the real 
 
 **What it does.** Doorstep is a Good Neighbor agent built with the **Strands Agents SDK**. It watches National Weather Service alerts for a volunteer group's area. Each hazard is a plug-in profile: extreme heat ships fully tested; extreme cold, smoke and power shutoffs are roadmap profiles, not built. When a warning hits, it:
 - ranks the group's opt-in list by risk (age, living alone, no AC);
-- phones every resident with a natural voice agent (Amazon Nova 2 Sonic), in their language;
+- phones every resident with a natural voice agent (Amazon Nova 2 Sonic), in English or Spanish;
 - classifies each check-in, sends cooling-centre info, and assigns volunteers for water or visits.
 
-It interrupts the block captain only for the decisions a human must make: an urgent red flag, a high-risk neighbour who won't answer, or a need it can't meet. In our replay of the June 2021 Portland warning, it reached or escalated all [48] residents in [N] minutes, with [k] human decisions. The same list is roughly 3 hours of phone calls for one volunteer.
+It interrupts the block captain only for the decisions a human must make: an urgent red flag, a high-risk neighbour who won't answer, or a need it can't meet. We replayed the real June 2021 NWS Portland Excessive Heat Warning against a fictional list of 48 residents. The first call started 7 seconds after the alert. All 48 were reached or escalated, which projects to 27.9 minutes on 6 phone lines, with 18 captain decisions against 204 automated actions. The same list is roughly 3.2 hours of phone calls for one volunteer.
 
 **How we built it.**
 - **Strands Agents SDK (Python):**
   - a Graph (assess → triage → outreach)
   - structured-output agents for classification
   - a dispatcher with tools
-  - Strands interrupts with session persistence, so the agent pauses for the captain and resumes after a Telegram tap
+  - Strands interrupts with session persistence, so the agent pauses for the captain and resumes after a Telegram tap, even in a different process
   - Cedar authorization on every tool call (allowlisted calls only, minimal disclosure, no agent-initiated emergency calls)
   - hooks for a full audit trail
   - a BidiAgent for voice
 - **Amazon Bedrock AgentCore:** Runtime hosts the coordinator and the browser voice agent; Observability traces every run. Resident preferences ("hard of hearing — speak slowly") come from the roster in DynamoDB; AgentCore Memory is roadmap.
 - **Models:** Nova 2 Lite (reasoning), Nova 2 Sonic (voice), Nova Micro (simulated residents for drills and evals).
-- **AWS:** Lambda, API Gateway, SQS, DynamoDB, EventBridge Scheduler, S3, CloudFront, SSM, CDK. (The phone bridge runs on the operator's machine behind ngrok; it is not hosted.)
+- **AWS:** Lambda, API Gateway, SQS, DynamoDB, EventBridge Scheduler, S3, CloudFront, SSM, CloudWatch, CDK. (The phone bridge runs on the operator's machine behind ngrok; it is not hosted.)
 - **Channels:** Twilio Media Streams (phone), Telegram (captain and volunteers), React dashboard.
-- **Evidence:** Strands Evals with 40 simulated residents, including hidden red flags and prompt-injection attempts. Red-flag recall [100%], policy violations [0].
+- **Evidence:** Strands Evals with 40 simulated residents, including hidden red flags and prompt-injection attempts. Red-flag recall 90% over 30 urgent check-ins (every miss was a call where the simulated resident never said the red flag), 20 of 20 forbidden actions denied by policy, 0 policy violations.
 
-**Challenges.** [Bridging phone audio to Nova 2 Sonic; resuming interrupted agents across processes; catching understated red flags.]
+**Challenges.**
+- Getting the page out *during* the call. A deterministic red-flag backstop listens to the live transcript; on a real phone call the captain's Telegram message went out 15 seconds before the resident hung up.
+- Resuming a paused agent in a different process. The captain might tap twenty minutes later, after the process that asked has died, and exactly one volunteer task has to go out: not zero, not two.
+- Understated red flags. A resident who says "fine, bit foggy, I put the milk in the oven" is confused, and the model read it as OK. Our evals caught it; we changed the prompts and added phrases to a deterministic backstop that can only raise a classification, never lower it. Some simulated residents never said their red flag at all, and no classifier can catch that; a direct screening question is next.
 
-**Accomplishments.** [A real phone call that pages a human mid-conversation; the replay numbers; zero policy violations in the red team.]
+**Accomplishments.**
+- A real phone call that pages a human mid-conversation.
+- A replay of a real 2021 warning: 48 of 48 residents reached or escalated, 18 human decisions.
+- 0 policy violations, and 20 of 20 red-team attempts refused with an audit reason.
+- A public judge sandbox that can't place real calls, with spending caps and a kill switch.
 
-**What we learned.** [Short and honest.]
+**What we learned.** A single eval run lies, so we ran every urgent persona three times. The model should propose and deterministic code should decide: state changes, disclosure and permissions live outside the model. And we didn't hit our own 100% recall target, so we say 90%.
 
 **What's next.**
 - Pilots with a senior building and a neighbourhood emergency team
@@ -91,16 +98,24 @@ It interrupts the block captain only for the decisions a human must make: an urg
 - More hazard profiles: extreme cold, smoke, and power shutoffs — each is a profile file, not a rebuild
 - Opt-in enrolment by phone
 
-**Built with:** strands-agents, amazon-bedrock, amazon-nova, bedrock-agentcore, aws-lambda, amazon-dynamodb, amazon-sqs, amazon-eventbridge, amazon-cloudfront, aws-cdk, cedar, twilio, telegram, python, react, typescript, tailwind
+**Built with:** strands-agents, amazon-bedrock, amazon-nova, bedrock-agentcore, aws-lambda, amazon-api-gateway, amazon-dynamodb, amazon-sqs, amazon-eventbridge, amazon-s3, amazon-cloudfront, amazon-cloudwatch, aws-cdk, cedar, twilio, telegram, python, react, typescript, tailwind, leaflet
 
-**Testing instructions (draft):**
-1. Open [live URL].
+**Links:**
+- Live: https://d3fia1jq6liv5t.cloudfront.net
+- Repo: https://github.com/anshsahny/doorstep
+- Blog 1: https://builder.aws.com/content/3JGXWIyhgd50C2viO3fHFXM74aE/agents-for-humans-ai-agents-that-check-on-neighbourhood-residents-during-a-heat-wave
+- Blog 2: (URL not in the repo; add it)
+- Blog 3: (add when published)
+- Video: (add after upload)
+
+**Testing instructions:**
+1. Open https://d3fia1jq6liv5t.cloudfront.net (Chrome or Safari; allow the microphone for step 3).
 2. Click **Run a drill** to get your own sandbox with 12 fictional residents.
-3. Click **Answer a call** to talk to Doorstep as a resident. Try saying you feel dizzy.
+3. When the call panel appears, click **Answer as <name>** to talk to Doorstep as that resident. Try saying you feel dizzy and confused: the captain is paged before you hang up.
 4. Approve a decision in the inbox.
-5. Open **Report** and **Evidence**.
-6. Captain view: passcode [xxxx].
-7. The sandbox never places real calls; the video shows the real phone path. All data is fictional.
+5. Open **Report**, **Policies** and **Evidence**.
+6. Captain view: passcode `<paste CAPTAIN_PASSCODE from .env into Devpost only; never commit it>`.
+7. The sandbox never places real calls or sends Telegram messages; the video shows the real phone path. All data is fictional. Drills and voice calls have daily caps; if one is reached, the site says so and offers a recorded drill.
 
 ## 5. Video script (target 4:40, hard max 5:00)
 
