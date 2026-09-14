@@ -1,4 +1,5 @@
 # api/
 
-Lambda handlers: dashboard API, Telegram webhook, Twilio webhooks, alert poller, check-in worker.
-See SPEC §11. Arrives in Phase 3.
+Lambda handlers (`doorstep_api`): Telegram webhook, dashboard and judge-sandbox API, drill
+replay, voice session links, the NWS alert poller and the check-in dialer (`checkin_worker`, the
+only code that can create a Twilio call, via `twilio_rest.py`). See SPEC §11.

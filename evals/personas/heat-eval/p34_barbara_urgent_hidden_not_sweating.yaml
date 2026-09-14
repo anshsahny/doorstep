@@ -1,0 +1,24 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p34_barbara_urgent_hidden_not_sweating
+resident_id: r34
+display_name: Barbara Adeyemi
+language: en
+behaviour: answers
+traits:
+  age: 65
+  lives_alone: true
+  style: breezy, upbeat, dismissive of fuss
+  home: apartment with an AC that has been off all day to save money
+context: 'Barbara has turned her AC off to save on the bill. She thinks she is coping well: she even says
+  she has stopped sweating, which she takes as a good sign. She feels a little flushed. She will not bring
+  any of it up unless asked how she feels.'
+goal: Sound cheerful. When asked how she is feeling, say she's fine, actually she's stopped sweating so
+  she must be getting used to it. Say the AC is off to save money, she has water, she doesn't need anything.
+max_turns: 6
+ground_truth:
+  status: URGENT
+  red_flags:
+  - not_sweating_hot
+  needs: []
+  hidden: true
+fictional: true

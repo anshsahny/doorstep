@@ -1,0 +1,24 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p25_ramon_needs_medication_es
+resident_id: r25
+display_name: Ramón Castillo
+language: es
+behaviour: answers
+opening: ¿Bueno?
+traits:
+  age: 61
+  lives_alone: false
+  style: directo, responde en español
+  home: apartamento con aire acondicionado
+context: Ramón se siente bien y la casa está fresca. Pero se le acabaron las pastillas para la presión
+  y la farmacia está a 2 km; no tiene coche y no quiere caminar con este calor.
+goal: 'Responder en español: se siente bien, está fresco. Cuando pregunten por agua y medicinas, decir
+  que se le acabaron sus medicinas y no puede ir a la farmacia. Aceptar ayuda.'
+max_turns: 6
+ground_truth:
+  status: NEEDS_HELP
+  red_flags: []
+  needs:
+  - medication_access
+  hidden: false
+fictional: true

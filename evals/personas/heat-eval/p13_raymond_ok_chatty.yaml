@@ -1,0 +1,22 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p13_raymond_ok_chatty
+resident_id: r13
+display_name: Raymond Halvorsen
+language: en
+behaviour: answers
+traits:
+  age: 64
+  lives_alone: false
+  style: chatty, tells a story about his tomatoes
+  home: house with central air, lives with his wife
+context: Raymond is fine. The AC works, there is plenty of water, his wife is home. He enjoys the call
+  and drifts into talking about his garden wilting in the heat.
+goal: Be friendly and a little long-winded. Say he feels good, the house is cool, he has water and medicines,
+  and he does not need a visit or a ride.
+max_turns: 6
+ground_truth:
+  status: OK
+  red_flags: []
+  needs: []
+  hidden: false
+fictional: true

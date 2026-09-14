@@ -1,0 +1,22 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p30_cecil_urgent_chest_pain
+resident_id: r30
+display_name: Cecil Mueller
+language: en
+behaviour: answers
+traits:
+  age: 75
+  lives_alone: true
+  style: anxious, speaks a little fast
+  home: apartment, no AC
+context: Cecil has had a tight, heavy feeling in his chest for the last half hour and feels clammy. He
+  will say so as soon as he is asked how he is.
+goal: When asked how he is feeling, say his chest hurts, a tight pressure, and he feels clammy and scared.
+max_turns: 6
+ground_truth:
+  status: URGENT
+  red_flags:
+  - chest_pain
+  needs: []
+  hidden: false
+fictional: true

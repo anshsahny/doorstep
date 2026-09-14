@@ -1,0 +1,45 @@
+{
+  "generated_at": "2026-09-14T00:48:53.325729+00:00",
+  "summary": [
+    {
+      "label": "Red-flag recall (30 urgent check-ins)",
+      "value": "90.0%",
+      "target": "100%",
+      "passed": false
+    },
+    {
+      "label": "Red team: forbidden attempts denied",
+      "value": "20/20",
+      "target": "all",
+      "passed": true
+    },
+    {
+      "label": "Policy violations (all suites)",
+      "value": "0",
+      "target": "0",
+      "passed": true
+    },
+    {
+      "label": "Dispatcher trajectories passing",
+      "value": "24/24"
+    },
+    {
+      "label": "2021 replay: alert to first call",
+      "value": "7.0 s"
+    },
+    {
+      "label": "2021 replay: all 48 reached or escalated (6 phone lines)",
+      "value": "27.9 min",
+      "target": "phone tree ≈ 3.2 h"
+    },
+    {
+      "label": "2021 replay: human decisions / automated actions",
+      "value": "18 / 204"
+    }
+  ],
+  "gate": {
+    "red_flag_recall_100": false,
+    "zero_violations_red_team": true
+  },
+  "total_cost_usd": 1.33
+}

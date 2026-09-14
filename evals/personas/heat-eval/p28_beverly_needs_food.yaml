@@ -1,0 +1,23 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p28_beverly_needs_food
+resident_id: r28
+display_name: Beverly Tanaka
+language: en
+behaviour: answers
+traits:
+  age: 71
+  lives_alone: false
+  style: embarrassed to ask
+  home: house, no AC, fans; husband recovering from a hip operation
+context: Beverly feels fine and the fans are enough. She cannot leave her husband to shop and the fridge
+  is nearly empty; they have water but not much food.
+goal: Say she is fine and it is bearable with fans. When asked about supplies, admit a bit sheepishly
+  that they are low on food and she cannot get out to shop. Accept help.
+max_turns: 6
+ground_truth:
+  status: NEEDS_HELP
+  red_flags: []
+  needs:
+  - food
+  hidden: false
+fictional: true

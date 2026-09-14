@@ -36,6 +36,8 @@ from aws_cdk import aws_apigatewayv2_integrations as integrations
 from aws_cdk import aws_bedrockagentcore as agentcore
 from aws_cdk import aws_cloudfront as cloudfront
 from aws_cdk import aws_cloudfront_origins as origins
+from aws_cdk import aws_cloudwatch as cloudwatch
+from aws_cdk import aws_cloudwatch_actions as cw_actions
 from aws_cdk import aws_dynamodb as dynamodb
 from aws_cdk import aws_ecr_assets as ecr_assets
 from aws_cdk import aws_iam as iam
@@ -44,6 +46,7 @@ from aws_cdk import aws_lambda_event_sources as event_sources
 from aws_cdk import aws_logs as logs
 from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_scheduler as scheduler
+from aws_cdk import aws_sns as sns
 from aws_cdk import aws_sqs as sqs
 from constructs import Construct
 
@@ -609,6 +612,63 @@ class DoorstepStack(Stack):
                 checkin_jobs, batch_size=1, report_batch_item_failures=True
             )
         )
+
+        # A real call that failed lands in the dead-letter queue and is never retried, so someone
+        # has to look. Both alarms notify one topic; subscribing an address is a console step
+        # (no email address belongs in this template). About $0.20/month for the two alarms.
+        ops_alerts = sns.Topic(self, "OpsAlerts", topic_name="doorstep-ops-alerts")
+        dlq_alarm = cloudwatch.Alarm(
+            self,
+            "CheckinDlqAlarm",
+            alarm_name="doorstep-checkin-jobs-dlq-not-empty",
+            alarm_description="A real check-in call job failed and was not retried. Check the "
+            "checkin-worker logs and the DLQ; the resident may not have been called.",
+            metric=dead_calls.metric_approximate_number_of_messages_visible(
+                period=Duration.minutes(5), statistic="Maximum"
+            ),
+            threshold=1,
+            evaluation_periods=1,
+            comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+            treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
+        )
+        dialer_errors = cloudwatch.Alarm(
+            self,
+            "CheckinWorkerErrorsAlarm",
+            alarm_name="doorstep-checkin-worker-errors",
+            alarm_description="The dialer raised an error (Twilio or configuration).",
+            metric=dialer.metric_errors(period=Duration.minutes(5), statistic="Sum"),
+            threshold=1,
+            evaluation_periods=1,
+            comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+            treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
+        )
+        # A Twilio error is caught and logged ("call failed") and deliberately not retried, so it
+        # reaches neither the DLQ nor the Lambda error count; this filter makes it visible too.
+        failed_calls = logs.MetricFilter(
+            self,
+            "FailedCallsFilter",
+            log_group=logs.LogGroup.from_log_group_name(
+                self, "DialerLogsRef", "/aws/lambda/doorstep-checkin-worker"
+            ),
+            metric_namespace="Doorstep",
+            metric_name="FailedCalls",
+            filter_pattern=logs.FilterPattern.string_value("$.msg", "=", "call failed"),
+            metric_value="1",
+        )
+        failed_calls.node.add_dependency(dialer)
+        failed_alarm = cloudwatch.Alarm(
+            self,
+            "FailedCallsAlarm",
+            alarm_name="doorstep-checkin-call-failed",
+            alarm_description="Twilio refused or failed a real check-in call; it was not retried.",
+            metric=failed_calls.metric(period=Duration.minutes(5), statistic="Sum"),
+            threshold=1,
+            evaluation_periods=1,
+            comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+            treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
+        )
+        for alarm in (dlq_alarm, dialer_errors, failed_alarm):
+            alarm.add_alarm_action(cw_actions.SnsAction(ops_alerts))
 
         board = function(
             "dashboard",

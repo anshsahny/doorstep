@@ -26,6 +26,7 @@ from .audit import AuditLog
 from .config import Settings, settings
 from .decisions import Responder, expire_due_decisions, redrive_unapplied, respond_to_decision
 from .graph import start_incident
+from .messages import VOLUNTEER_UPDATE
 from .models import Alert, CaseState, Incident, Mode, ResidentCase, utcnow
 from .notify.base import Notifier, RecordingNotifier, deliver_pending
 from .profiles import load_profile
@@ -100,6 +101,7 @@ class DrillRunner:
         run_options: dict[str, Any] | None = None,
         voice_residents: list[str] | None = None,
         mode: Mode = "drill",
+        persona_dirs: list[Path] | None = None,
     ) -> None:
         self.cfg = cfg or settings()
         # "sandbox" is a public visitor's drill: the same simulation, but Cedar's
@@ -110,6 +112,8 @@ class DrillRunner:
         # Residents a person will answer for by voice: the drill never simulates them and does
         # not wait for them; their results arrive as coordinator events.
         self.voice_residents = frozenset(voice_residents or [])
+        # Evals widen the simulated roster (the 48-resident backtest); drills use the profile's set.
+        self.persona_dirs = persona_dirs
         self.store_factory = store_factory
         self.incident_id = incident_id
         self.alert = alert
@@ -138,11 +142,12 @@ class DrillRunner:
 
     def _build_context(self) -> RunContext:
         # A profile without a persona set can still be assessed; it just cannot simulate calls.
-        personas = (
-            load_personas(self.cfg.data_dir.parent / self.profile.eval_personas)
-            if self.profile.eval_personas
-            else []
-        )
+        if self.persona_dirs:
+            personas = [p for d in self.persona_dirs for p in load_personas(d)]
+        elif self.profile.eval_personas:
+            personas = load_personas(self.cfg.data_dir.parent / self.profile.eval_personas)
+        else:
+            personas = []
         self.personas = {p.resident_id: p for p in personas}
         resident_ids = list(self.personas) or load_drill_subset(self.cfg.data_dir)
         incident_id = self.incident_id or new_incident_id()
@@ -245,10 +250,14 @@ class DrillRunner:
         if not self.auto_approve:
             return
         for decision in ctx.store.decisions(ctx.incident_id, status="pending"):
+            # A simulated volunteer checks and reports "They're OK"; "On my way" alone would
+            # leave the case waiting on a reply nobody is there to send.
+            ids = [o.id for o in decision.options]
+            choice = "ok" if decision.name == VOLUNTEER_UPDATE and "ok" in ids else ids[0]
             await respond_to_decision(
                 ctx,
                 decision.id,
-                decision.options[0].id,
+                choice,
                 Responder(source="drill", external_id="auto-approve"),
                 actor_override="captain:auto-approve",
             )

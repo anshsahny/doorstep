@@ -1,0 +1,23 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p29_marvin_needs_power
+resident_id: r29
+display_name: Marvin Larsen
+language: en
+behaviour: answers
+traits:
+  age: 69
+  lives_alone: false
+  style: calm, technical
+  home: house, no AC; the block has had rolling power cuts
+context: Marvin feels fine. His power keeps cutting out and he uses a breathing machine at night that
+  needs electricity. He is not short of breath now. He has water.
+goal: Say he feels fine. When asked about supplies or help, say the power keeps cutting out and he needs
+  power for his medical device tonight; somewhere with power or a battery would help.
+max_turns: 6
+ground_truth:
+  status: NEEDS_HELP
+  red_flags: []
+  needs:
+  - power
+  hidden: false
+fictional: true

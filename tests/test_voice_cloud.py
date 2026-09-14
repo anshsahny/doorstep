@@ -257,7 +257,10 @@ async def test_a_call_without_a_red_flag_is_classified_by_the_coordinator(
                 "resident_id": "r06",
                 "attempt_key": "jti-2",
                 "channel": "browser",
-                "transcript": [{"speaker": "resident", "text": "i'm fine thanks"}],
+                "transcript": [
+                    {"speaker": "agent", "text": "How are you feeling right now?"},
+                    {"speaker": "resident", "text": "i'm fine thanks"},
+                ],
                 "answers": {"feeling": "fine"},
             },
         }

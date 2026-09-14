@@ -1,0 +1,20 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p21_wallace_ok_busy
+resident_id: r21
+display_name: Wallace Byrne
+language: en
+behaviour: answers
+traits:
+  age: 62
+  lives_alone: true
+  style: in a hurry, driving to the store (parked)
+  home: house with central air
+context: Wallace is fine, just busy. House is cool, he has water.
+goal: 'Keep it short: fine, AC is on, has water, no help needed, thanks.'
+max_turns: 5
+ground_truth:
+  status: OK
+  red_flags: []
+  needs: []
+  hidden: false
+fictional: true

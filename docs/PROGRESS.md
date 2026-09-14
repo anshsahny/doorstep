@@ -1,7 +1,6 @@
 # Doorstep — progress log
 
-Current phase: **5 — Dashboard + judge sandbox**: ✅ **complete, Gate 5 passed** (2026-09-13 11:20 PDT).
-Ready for Ansh to commit on `phase5` and say "go" for Phase 6.
+Current phase: **6 — Evals, hardening, docs**: work done and verified locally; waiting for Ansh to commit/push (CI), deploy, and decide on going public.
 Next gate: **Gate 6**
 Time now vs plan: Phase 0 ran Fri Sep 11 00:00–12:35 PDT (planned Thu evening). Phase 1 ran Fri
 17:45–21:20 PDT, about 3.5 h of its 5 h box. Phase 2 started Sat 08:30 PDT and was committed
@@ -24,7 +23,7 @@ before 11:27 PDT, when Phase 3 planning started: about 1.5 h ahead of the Sat 1 
 | 4a | 3 browser check-ins | ✅ passed | **Three consecutive real browser calls by Ansh** (Chrome, mic, headphones) through the deployed path (`/voice/session` → presigned WebSocket → `doorstep_voice` runtime → Nova 2 Sonic → coordinator), incident `drill-20260913-034202-acd6`, on the final build: **Rose (r01) OK**, 4 answers, 2 barge-ins, result applied **2.2 s** after hang-up; **George (r10) NEEDS_HELP** (ride, cooling), 3 barge-ins, volunteer task raised, applied **1.5 s** after hang-up; **Evelyn (r09) URGENT mid-call**: the live backstop matched "dizzy and confused", **the captain's decision `dec-003` existed at 04:06:16.6, 6 s before hang-up at 04:06:22**, the line was held until it was out, final classification URGENT applied **1.2 s** after hang-up. Before these: Ansh's C2 call (Mei-Ling OK, 2.5 s) and three automated `make voice-e2e` calls (OK 1.5 s and 1.8 s; urgent paged 8.2 s before hang-up). `make check` 322 tests; `make scan-logs` 0 matches. Sonic ≈ $0.010–0.016 per call. | 2026-09-12 |
 | 4b | 2 real calls + mid-call escalation | ✅ passed | Real calls from the Twilio `doorstep` subaccount to Ansh's own allowlisted phone, through the `checkin_worker` dialer and the phone bridge (ngrok), Cedar allowing each only through the operator quiet-hours exception. **Call 1** `live-20260913-044054-c586`: Twilio `completed` 66 s, full protocol, OK, result applied 1.5 s after hang-up. **Call 2** `live-20260913-074003-405b` (on speaker, recorded): `completed` 68 s, full protocol, OK, RESOLVED. **Call 3** `live-20260913-080655-3cec` (Telegram on, recorded): "I feel dizzy and confused, I'm not sure what day it is". The live backstop paged at 08:07:35.0, **the captain's Telegram message was sent at 08:07:36.7, and Twilio ended the call at 08:07:52: 15.3 s before hang-up**. URGENT, ESCALATED, final classification applied 1.1 s after hang-up. Before these: no-ring rehearsals through the deployed chain, where Cedar denied non-allowlisted residents in the cloud. `make check` 354 tests. | 2026-09-13 |
 | 5 | Judge flow < 4 min, Lighthouse a11y ≥ 90 | ✅ passed | **Lighthouse accessibility 100** on all 7 pages, desktop and mobile (`make lighthouse`, deployed site). **Keyboard only** in real Chrome (puppeteer, Tab/Shift+Tab/Enter/Space, no mouse): recorded 19/19, **live 22/22** on the deployed site: drill started by Enter, first decision at 25 s, answered by keyboard at 27 s, report at 28 s, every focus stop ringed, 0 console errors (`make keyboard-pass ARGS=--live`). **Caps** 14/14 on the deployed API (`make cap-test`): per-IP, everyone-per-10-min, daily and total drill caps, voice per-IP/daily/total, no-token 401, passcode lockout (right passcode refused while locked), kill switch on drills/voice/answers; counters restored. **Judge path by pointer** on the deployed site (in-app browser): drill 5.4 s after the click, synthetic voice call for Mei-Ling paged the captain 21 s before hang-up, two dashboard answers applied as `captain:cap-maria` / `volunteer:vol-tom` with `source: web`, report "all 12 in 1 min 30 s", 0 console errors. `make check` 383 tests; `make web-test` 9. **Human runs (Ansh, fresh incognito, own voice, stopwatch from opening the URL to the report headline): laptop Chrome 1:39** (`sandbox-20260913-181317-c0e82c`: call began 10.8 s after the drill started, captain paged 33.5 s, call ended 48.1 s so the page was out 14.6 s before hang-up, all 12 reached 47.6 s, his dashboard answer applied 77.7 s; 0 console errors) and **phone Safari on cellular 1:07** (`sandbox-20260913-181744-7bf558`: call 8.1 s, paged 30.2 s, ended 44.4 s so 14.2 s before hang-up, all 12 reached 47.4 s, answer applied 54.4 s). Both answers recorded as `captain:cap-maria` with `source: web`. | 2026-09-13 |
-| 6 | Evals targets, CI green, clean-clone setup | ☐ | | |
+| 6 | Evals targets, CI green, clean-clone setup | ☐ **not passed** | Red team 0 violations, 20/20 denied: met. Red-flag recall 90.0% (27/30): **not met** (all 3 misses: red flag never spoken by the simulated resident). Clean clone: passed after one Makefile fix (setup, check without AWS, web-test, local drill). CI on a pushed commit: waiting for Ansh's commit. Local `make check` 398 green. | 2026-09-13 |
 | 7 | Submitted | ☐ | | |
 
 ## Smoke tests (Phase 0)
@@ -38,6 +37,100 @@ before 11:27 PDT, when Phase 3 planning started: about 1.5 h ahead of the Sat 1 
 | 5 | Telegram ping + button | ✅ PASS 2026-09-11 | Bot `@doorstep_agent_bot`; captain chat ID from the `--whoami` step. Message with 3 inline buttons sent; the `I'm handling it` callback arrived 7.5 s later via long polling, was answered, and the message was edited. First run timed out at 120 s with no tap; second run passed. |
 
 ## Log (newest first)
+
+### 2026-09-13 about 17:55–18:20 PDT — hardening, README, clean clone (Phase 6 continued)
+- Built:
+  - **Alarms** (`infra/doorstep_stack.py`): SNS topic `doorstep-ops-alerts` with three alarms: DLQ
+    not empty, dialer Lambda errors, and a log metric filter on the dialer's `"call failed"` line.
+    The dialer catches Twilio errors and never retries (by design), so without the filter a
+    Twilio failure would have reached neither the DLQ nor the error count. Not deployed yet;
+    subscribing an address to the topic is a console step.
+  - Twilio failure path test (`test_phone.py`): logged for the alarm, not retried.
+  - **README** per SUBMISSION §7 (problem, demo, how it works, Strands feature → file table, AWS
+    services, safety, evidence, quickstart, full deploy, cost, criteria map, limitations,
+    roadmap, disclosures). Per-directory READMEs refreshed (no EC2, no Leaflet, no "arrives in").
+  - Makefile: cloud targets take `AWS_PROFILE=...` (were hard-coded to `doorstep`); **`make setup`
+    now installs `web/` packages** (found by the clean clone).
+  - SPEC §12 amended with the as-built eval design. AWS account id redacted from this file
+    (it remains in git history). CLAUDE.md commands updated.
+- **Clean-clone test** (fresh `git clone` of this repo into a temp dir with the uncommitted
+  changes laid on top, no `.env`, following the README): `make setup` exit 0; `make check` with no
+  AWS credentials at all: ruff clean, **398 passed**; `make web-test` **failed** (web packages
+  never installed) → fixed in the Makefile → re-run from an empty `web/node_modules`: **9 passed**;
+  `make local-drill ARGS=--auto-approve` with only an AWS profile: **PASS**, 12/12 settled, r01 and
+  r02 escalated, 0 violations, 84.6 s, 8 decisions (one per resident; volunteer cases closed
+  "checked by volunteer" only after the reply). Note: `npm ci` run by hand under global Node 20
+  is refused by `engine-strict` (correct); `make` puts Node 22 first.
+- Verified how: `make check` **398 passed** in this repo; infra template tests 18 passed.
+- Reviewed for publication: `KICKOFF_PROMPTS.md`, `.claude/launch.json`, `.mcp.json` hold no secrets.
+- Waiting on Ansh: commit and push (then CI), deploy the fixes and alarms, `make web-deploy` for
+  the Evidence page, the history decision (account id, commit emails), then going public.
+
+### 2026-09-13 12:55–17:50 PDT — Phase 6 evals built, run before and after fixes; REPORT.md written
+- Ansh: keep going without commits; stop only for a human step. Decisions taken on his behalf,
+  as proposed in the plan: **AgentCore Memory cut** (labelled "not built · roadmap" in the diagram
+  and the Devpost draft); cold stays roadmap only.
+- Built: `evals/` (Strands Evals `Experiment`/`Case`, deterministic evaluators, task-result
+  cache, token meter) with four suites, `make evals`, `evals/REPORT.md`, `evals/report.json`,
+  `web/public/evals-report.json`. 36 new fictional personas (`evals/personas/heat-eval` 29,
+  `heat-backtest` 7); `Persona.scripted` and `GroundTruth.adversarial/accept`;
+  `DrillRunner(persona_dirs=...)`.
+- Results (REPORT.md has every number): suite 1 red-flag recall **86.7% → 90.0% (27/30), target
+  100% not met**; all three final misses are check-ins where the simulated resident never said
+  the red flag (Barbara ×2 "Feeling fine, actually"; Carmen hung up before any question).
+  Suite 2 **12/22 → 24/24**; double decisions 2 → 0; RESOLVED-with-task-open 8 → 0; violations
+  2 → 0. Suite 3 **20/20 forbidden attempts denied with reasons, 12/12 forced, 2/2 controls,
+  0 effects, 0 violations** (before and after). Suite 4 (48 residents, June 2021 alert): alert →
+  first call 7.0 s; 48/48 reached or escalated; 27.9 min projected on 6 lines, 63.1 min on 1 line,
+  vs 192 min phone tree; 18 captain decisions vs 204 automated actions; 0 violations.
+- Fixed (product), each with a regression test in `tests/test_phase6_fixes.py`:
+  1. one captain decision per resident (`escalate_to_captain` refuses while one is open/answered);
+  2. a case with a volunteer on the way stays ASSIGNED until the reply (`close_case` refuses;
+     "On my way" creates a follow-up task; ASSIGNED counts as awaiting a human; the drill's
+     simulated volunteer answers "They're OK");
+  3. a volunteer brief could name a non-consenting resident through the model's reason (real
+     violation) — names scrubbed;
+  4. UNCLEAR ×3 escalates as `doorstep-high-risk-no-answer`, not unmet need;
+  5. protocol completion: a recorded answer needs the question in the transcript (the agent once
+     recorded four answers without asking), and a question asked and answered counts without
+     `record_answer`;
+  6. `checkin_max_turns` 6 → 9; red-flag line no longer says "right now"; prompts forbid timing
+     promises, claims to have called anyone, and refusal lectures; understated signs count;
+     5 generic disorientation backstop phrases (chosen after the Lloyd miss — disclosed).
+- Not deployed: the deployed stack still runs the pre-fix code (double decisions, "right now").
+- Diagram regenerated: dashboard and report no longer "planned"; Memory "not built · roadmap";
+  phone bridge "operator's machine + ngrok, not hosted"; footer names cold as roadmap.
+  SUBMISSION.md Devpost draft: Memory, EC2, Leaflet and cold claims removed.
+- Verified how: `make check` green (ruff, **396 tests**); `make web-test` 9/9. Eval spend about
+  $2.40 (metered tokens).
+- Secrets scan (read-only, values never printed): gitleaks over all 29 commits on all branches:
+  no leaks; gitleaks over the publishable tree (tracked + untracked, not ignored): no leaks.
+  Exact-value search of every `.env` value in history and tree: none of the secrets, phone
+  numbers, chat ids, passcode or SIDs appear. Findings: AWS account id in `docs/PROGRESS.md`
+  (history and tree); commit author emails in history (personal gmail, and a work-domain address
+  on 16 commits); all phone-shaped strings are fictional 555 numbers; `docs/local-drill.png`
+  shows only fictional data.
+- Not done: README, clean-clone test, CI on a pushed commit, DLQ alarm, going public.
+
+### 2026-09-13 about 12:50 PDT — Phase 6 plan proposed (no code)
+- Gate 5 confirmed passed. Ansh's schedule: submit tonight; recording starts 19:30 regardless;
+  Devpost by 22:30. **Phase 6b (cold) is cut**: cold appears only as roadmap.
+- Found while planning, before any code:
+  1. **Two decisions for one resident is still true** (`cloud_drill_report.json`, r03): the captain
+     answered the door-knock approval with "I'm handling it"; `ApprovalHook` cancels the tool, the
+     model then calls `escalate_to_captain`, which raises `doorstep-unmet-need` (dec-006) for the
+     same person. Sequential, not parallel, so a code guard in `escalate_to_captain` can fix it.
+  2. **RESOLVED with a pending volunteer task is not intentional**: the dispatcher prompt says
+     "assign_volunteer … then close_case", and `ASSIGNED -> RESOLVED` is allowed, so the case closes
+     before the volunteer replies. "I'm handling it" → RESOLVED (captain handling) is intentional.
+  3. An UNCLEAR ×3 case (r07, Gloria) is escalated as `doorstep-unmet-need` because its last attempt
+     was answered; it should read as "could not confirm", not an unmet need.
+  4. AgentCore Memory was moved to Phase 6 and is not built; the diagram and the Devpost draft
+     (SUBMISSION §4) still claim it, plus EC2, Leaflet and cold.
+  5. **The AWS account ID is in committed history** (`docs/PROGRESS.md`, Phase 0 smoke 03 entry,
+     since Phase 0) along with a masked parent Twilio SID fragment (`AC15...c79a`).
+  6. No CloudWatch alarm on the check-in DLQ (`dead_calls` exists, nothing watches it).
+- Next: Ansh answers the plan's open questions and says "go".
 
 ### 2026-09-13 afternoon — CI failure after the Phase 5 push: three thread races, two of them real
 - CI failed 1 of 383: `test_ids_are_unique_under_threads[dynamo]` (51 unique ids of 60). Not
@@ -819,6 +912,19 @@ before 11:27 PDT, when Phase 3 planning started: about 1.5 h ahead of the Sat 1 
 | 2026-09-13 | Keyboard pass and Lighthouse are scripts (`make keyboard-pass`, `make lighthouse`) | Repeatable Gate 5 evidence; the in-app pane cannot activate buttons from the keyboard | a manual pass |
 | 2026-09-11 | The active profile and the replay fixture are configuration (`DOORSTEP_PROFILE`, `DOORSTEP_ALERT_FIXTURE` in `config.py`); a test forbids hazard words anywhere else in the agent package | Makes "nothing hazard-specific is hard-coded" checkable | a default in the drill runner (caught by the guard) |
 
+## Phase 6 rough edges (avoid on camera)
+
+- Until `make deploy`, the live stack still raises two decisions for one resident and says
+  "I'm getting someone to check on you right now".
+- Until `make web-deploy`, the Evidence page says the evals "are being run now".
+- Say "90% red-flag recall; every red flag a resident actually said was caught", never 100%.
+- "7 s to first call" excludes the poller's up-to-10-minute interval; say "projected on 6 lines"
+  for the 27.9 minutes.
+- `docs/local-drill.png` (untracked) shows the old double decisions: don't commit or show it.
+- Nova 2 Lite still sometimes says a refusal line on urgent text calls (3 of 60); Sonic may repeat
+  the 911 line (not fixed).
+- The phone path needs the local bridge and ngrok running.
+
 ## Phase 5 rough edges (avoid on camera, or fix in Phase 6)
 
 - Model-written option labels appear as-is, e.g. "door-knock" and "nearest volunteer" beside
@@ -886,6 +992,8 @@ decision").
 - [x] Phase 3: NWS user agent in `.env` and SSM (personal email for now); Telegram gate drill (2026-09-12)
 - [ ] Phase 3: review and commit the working tree on `phase3`, then say "go" for Phase 4
 - [ ] Note: the bot is in webhook mode now; run `make telegram-webhook ARGS=delete` before any local `make telegram-drill`, and `ARGS=set` afterwards
+- [ ] Phase 6: commit and push `phase6`; `make deploy` (dispatcher fixes + alarms); subscribe an email to SNS `doorstep-ops-alerts`; `make web-deploy` (Evidence page shows the eval numbers)
+- [ ] Before going public: decide on git history (AWS account id in old PROGRESS.md; commit author emails)
 - [ ] **Before submitting: swap in a real second Telegram account.** See "Second-number swap"
       below — it is one `.env` line, and it makes the role check visibly real in the demo.
 - [x] **Phase 5 Gate 5 (human half):** laptop 1:39, phone 1:07 (2026-09-13)

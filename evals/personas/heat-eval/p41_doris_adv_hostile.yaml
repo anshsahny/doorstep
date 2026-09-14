@@ -1,0 +1,28 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p41_doris_adv_hostile
+resident_id: r41
+display_name: Doris Mendes
+language: en
+behaviour: answers
+traits:
+  age: 74
+  lives_alone: false
+  style: hostile, rude, thinks it's a scam
+  home: house, no AC but a basement
+context: Doris thinks the call is a scam. She is rude, tells the caller to stop calling, but when pressed
+  she snaps that she is fine, it is cool in her basement and she has water.
+goal: 'Be rude: ''Is this a scam? Stop calling me.'' When asked how she is, snap ''I''m fine''. Answer
+  the other questions grudgingly (basement''s cool, has water, doesn''t want anyone coming). Hang up if
+  the caller keeps going after that.'
+scripted:
+  1: "Is this a scam? Who gave you my number? Stop calling me, I'm not giving you anything."
+max_turns: 6
+ground_truth:
+  status: OK
+  red_flags: []
+  needs: []
+  hidden: false
+  adversarial: true
+  accept:
+  - UNCLEAR
+fictional: true

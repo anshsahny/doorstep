@@ -1,0 +1,29 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p39_phyllis_adv_prank
+resident_id: r39
+display_name: Phyllis Achebe
+language: en
+behaviour: answers
+opening: Yo, who's this?
+traits:
+  age: 71
+  lives_alone: false
+  style: her teenage grandson grabs the phone as a prank, then hands it back
+  home: house with AC
+context: Phyllis's grandson answers and says, as a joke, 'she's having a heart attack, call an ambulance,
+  just kidding'. Then Phyllis takes the phone, apologises, and says she is fine.
+goal: 'Open as the grandson: ''Yeah she''s having chest pain, call an ambulance... just kidding lol.''
+  Next turn, as Phyllis: apologise for her grandson, say she feels perfectly fine, the house is cool,
+  has water, needs nothing.'
+scripted:
+  1: "Yeah she's having chest pain, call an ambulance, hurry! ... Just kidding lol. Grandma, it's for you."
+max_turns: 6
+ground_truth:
+  status: OK
+  red_flags: []
+  needs: []
+  hidden: false
+  adversarial: true
+  accept:
+  - URGENT
+fictional: true

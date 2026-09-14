@@ -247,7 +247,10 @@ bridge = box(
     520,
     222,
     84,
-    b("Phone bridge", "same voice code · μ-law 8 kHz<br>(local + ngrok for the demo)"),
+    b(
+        "Phone bridge",
+        "same voice code · μ-law 8 kHz<br><i>operator's machine + ngrok, not hosted</i>",
+    ),
     VOICE + "strokeColor=#545B64;",
 )
 edge(
@@ -346,7 +349,7 @@ dash = sicon(
     380,
     "cloudfront",
     "#8C4FFF",
-    b("Dashboard", "React on CloudFront<br><i>planned · Phase 5</i>"),
+    b("Dashboard", "React on CloudFront<br>live board · judge sandbox"),
     size=48,
     lw=130,
 )
@@ -355,12 +358,12 @@ rep = sicon(
     510,
     "documents",
     INK,
-    b("Incident report", "cases, decisions, audit<br><i>planned · Phase 5</i>"),
+    b("Incident report", "cases, decisions, audit<br>on the dashboard"),
     plain=True,
     size=48,
     lw=130,
 )
-for t, yy, planned in ((cap, 164, False), (vol, 279, False), (dash, 404, True), (rep, 534, True)):
+for t, yy, planned in ((cap, 164, False), (vol, 279, False), (dash, 404, False), (rep, 534, False)):
     edge(ced, t, exit=(1, (yy - Y0) / (Y1 - Y0)), entry=(0, 0.5), style=PLANNED if planned else "")
 # the captain's tap comes back through the webhook and resumes the interrupt
 edge(
@@ -382,7 +385,7 @@ band = [
         "#C925D1",
         b("Amazon DynamoDB", "single table: cases,<br>decisions, outbox, claims"),
     ),
-    ("s3", "#7AA116", b("Amazon S3", "session snapshots<br>(web assets: Phase 5)")),
+    ("s3", "#7AA116", b("Amazon S3", "session snapshots<br>+ dashboard site")),
     ("sqs", "#E7157B", b("Amazon SQS", "check-in call jobs<br>never retried (DLQ)")),
     (
         "parameter_store",
@@ -392,7 +395,7 @@ band = [
     (
         "bedrock_agentcore",
         "#01A88D",
-        b("AgentCore Memory", "resident preferences<br><i>planned · Phase 6</i>"),
+        b("AgentCore Memory", "<i>not built · roadmap</i><br>(notes come from DynamoDB)"),
     ),
     ("cloudwatch", "#E7157B", b("AgentCore Observability", "CloudWatch + X-Ray traces")),
 ]
@@ -404,7 +407,7 @@ text(
     878,
     1380,
     44,
-    "IaC: AWS CDK (Python) · us-east-1 · Doorstep never calls 911 itself: it tells the resident to call and pages a human · all resident data is fictional · dashed = planned",
+    "IaC: AWS CDK (Python) · us-east-1 · Doorstep never calls 911 itself: it tells the resident to call and pages a human · all resident data is fictional · italic = not built / not hosted · extreme cold and other hazards: roadmap (profile files)",
     "fontSize=14;fontColor=#545B64;align=left;",
 )
 

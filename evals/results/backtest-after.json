@@ -1,0 +1,1598 @@
+{
+  "suite": "backtest",
+  "label": "after",
+  "metrics": {
+    "residents": 48,
+    "activated": true,
+    "all_settled": true,
+    "unsettled": [],
+    "measured_alert_to_first_call_s": 7.0,
+    "measured_alert_to_all_reached_or_escalated_s": 312.9,
+    "measured_reached_or_escalated": 48,
+    "measured_wall_s": 314.8,
+    "projected_lines": 6,
+    "projected_all_reached_or_escalated_min": 27.9,
+    "projected_one_line_min": 63.1,
+    "phone_tree_baseline_min": 192.0,
+    "checkin_attempts": 57,
+    "captain_decisions": 18,
+    "captain_decision_names": [
+      "doorstep-approve-door-knock",
+      "doorstep-high-risk-no-answer",
+      "doorstep-urgent-red-flag"
+    ],
+    "volunteer_tasks": 12,
+    "automated_actions": 204,
+    "automated_breakdown": {
+      "check_in_attempts": 57,
+      "agent_tool_actions": 147,
+      "messages_recorded": 44
+    },
+    "urgent_expected": 10,
+    "urgent_escalated": 9,
+    "urgent_missed": [
+      "r34"
+    ],
+    "policy_denials": 0,
+    "policy_violations": 0,
+    "violations": []
+  },
+  "assumptions": {
+    "answered_call_s": 67.0,
+    "urgent_call_s": 46.0,
+    "unanswered_attempt_s": 30.0,
+    "result_applied_s": 2.5,
+    "retry_minutes": 10,
+    "lines": 6,
+    "poller": "the NWS poller runs every 10 minutes, so detection can add up to 10 min",
+    "simulated_captain": "takes each decision's first option; volunteers report OK"
+  },
+  "plan": [
+    {
+      "resident_id": "r05",
+      "attempts": [
+        "no_answer",
+        "no_answer",
+        "no_answer"
+      ]
+    },
+    {
+      "resident_id": "r01",
+      "attempts": [
+        "urgent"
+      ]
+    },
+    {
+      "resident_id": "r04",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r08",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r17",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r30",
+      "attempts": [
+        "urgent"
+      ]
+    },
+    {
+      "resident_id": "r02",
+      "attempts": [
+        "urgent"
+      ]
+    },
+    {
+      "resident_id": "r03",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r12",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r26",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r31",
+      "attempts": [
+        "urgent"
+      ]
+    },
+    {
+      "resident_id": "r38",
+      "attempts": [
+        "urgent"
+      ]
+    },
+    {
+      "resident_id": "r44",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r48",
+      "attempts": [
+        "no_answer",
+        "no_answer",
+        "no_answer"
+      ]
+    },
+    {
+      "resident_id": "r33",
+      "attempts": [
+        "urgent"
+      ]
+    },
+    {
+      "resident_id": "r09",
+      "attempts": [
+        "answered",
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r10",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r15",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r16",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r24",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r47",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r06",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r18",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r19",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r28",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r34",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r41",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r45",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r13",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r20",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r29",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r36",
+      "attempts": [
+        "urgent"
+      ]
+    },
+    {
+      "resident_id": "r42",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r46",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r11",
+      "attempts": [
+        "answered",
+        "answered",
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r14",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r21",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r22",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r27",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r35",
+      "attempts": [
+        "urgent"
+      ]
+    },
+    {
+      "resident_id": "r43",
+      "attempts": [
+        "no_answer",
+        "no_answer",
+        "no_answer"
+      ]
+    },
+    {
+      "resident_id": "r39",
+      "attempts": [
+        "urgent"
+      ]
+    },
+    {
+      "resident_id": "r25",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r07",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r23",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r32",
+      "attempts": [
+        "urgent"
+      ]
+    },
+    {
+      "resident_id": "r37",
+      "attempts": [
+        "answered"
+      ]
+    },
+    {
+      "resident_id": "r40",
+      "attempts": [
+        "answered"
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "id": "dec-001",
+      "name": "doorstep-urgent-red-flag",
+      "resident_id": "r01",
+      "status": "answered",
+      "response": "handle"
+    },
+    {
+      "id": "dec-002",
+      "name": "doorstep-urgent-red-flag",
+      "resident_id": "r30",
+      "status": "answered",
+      "response": "handle"
+    },
+    {
+      "id": "dec-003",
+      "name": "doorstep-urgent-red-flag",
+      "resident_id": "r02",
+      "status": "answered",
+      "response": "handle"
+    },
+    {
+      "id": "dec-004",
+      "name": "doorstep-approve-door-knock",
+      "resident_id": "r17",
+      "status": "answered",
+      "response": "approve"
+    },
+    {
+      "id": "dec-005",
+      "name": "doorstep-volunteer-update",
+      "resident_id": "r17",
+      "status": "answered",
+      "response": "ok"
+    },
+    {
+      "id": "dec-006",
+      "name": "doorstep-approve-door-knock",
+      "resident_id": "r04",
+      "status": "answered",
+      "response": "approve"
+    },
+    {
+      "id": "dec-007",
+      "name": "doorstep-volunteer-update",
+      "resident_id": "r04",
+      "status": "answered",
+      "response": "ok"
+    },
+    {
+      "id": "dec-008",
+      "name": "doorstep-approve-door-knock",
+      "resident_id": "r03",
+      "status": "answered",
+      "response": "approve"
+    },
+    {
+      "id": "dec-009",
+      "name": "doorstep-volunteer-update",
+      "resident_id": "r03",
+      "status": "answered",
+      "response": "ok"
+    },
+    {
+      "id": "dec-010",
+      "name": "doorstep-urgent-red-flag",
+      "resident_id": "r31",
+      "status": "answered",
+      "response": "handle"
+    },
+    {
+      "id": "dec-011",
+      "name": "doorstep-urgent-red-flag",
+      "resident_id": "r38",
+      "status": "answered",
+      "response": "handle"
+    },
+    {
+      "id": "dec-012",
+      "name": "doorstep-approve-door-knock",
+      "resident_id": "r26",
+      "status": "answered",
+      "response": "approve"
+    },
+    {
+      "id": "dec-013",
+      "name": "doorstep-volunteer-update",
+      "resident_id": "r26",
+      "status": "answered",
+      "response": "ok"
+    },
+    {
+      "id": "dec-014",
+      "name": "doorstep-urgent-red-flag",
+      "resident_id": "r33",
+      "status": "answered",
+      "response": "handle"
+    },
+    {
+      "id": "dec-015",
+      "name": "doorstep-approve-door-knock",
+      "resident_id": "r44",
+      "status": "answered",
+      "response": "approve"
+    },
+    {
+      "id": "dec-016",
+      "name": "doorstep-volunteer-update",
+      "resident_id": "r44",
+      "status": "answered",
+      "response": "ok"
+    },
+    {
+      "id": "dec-017",
+      "name": "doorstep-volunteer-update",
+      "resident_id": "r47",
+      "status": "answered",
+      "response": "ok"
+    },
+    {
+      "id": "dec-018",
+      "name": "doorstep-volunteer-update",
+      "resident_id": "r24",
+      "status": "answered",
+      "response": "ok"
+    },
+    {
+      "id": "dec-019",
+      "name": "doorstep-volunteer-update",
+      "resident_id": "r19",
+      "status": "answered",
+      "response": "ok"
+    },
+    {
+      "id": "dec-020",
+      "name": "doorstep-volunteer-update",
+      "resident_id": "r18",
+      "status": "answered",
+      "response": "ok"
+    },
+    {
+      "id": "dec-021",
+      "name": "doorstep-volunteer-update",
+      "resident_id": "r28",
+      "status": "answered",
+      "response": "ok"
+    },
+    {
+      "id": "dec-022",
+      "name": "doorstep-volunteer-update",
+      "resident_id": "r29",
+      "status": "answered",
+      "response": "ok"
+    },
+    {
+      "id": "dec-023",
+      "name": "doorstep-urgent-red-flag",
+      "resident_id": "r36",
+      "status": "answered",
+      "response": "handle"
+    },
+    {
+      "id": "dec-024",
+      "name": "doorstep-urgent-red-flag",
+      "resident_id": "r39",
+      "status": "answered",
+      "response": "handle"
+    },
+    {
+      "id": "dec-025",
+      "name": "doorstep-volunteer-update",
+      "resident_id": "r25",
+      "status": "answered",
+      "response": "ok"
+    },
+    {
+      "id": "dec-026",
+      "name": "doorstep-urgent-red-flag",
+      "resident_id": "r35",
+      "status": "answered",
+      "response": "handle"
+    },
+    {
+      "id": "dec-027",
+      "name": "doorstep-urgent-red-flag",
+      "resident_id": "r32",
+      "status": "answered",
+      "response": "handle"
+    },
+    {
+      "id": "dec-028",
+      "name": "doorstep-high-risk-no-answer",
+      "resident_id": "r48",
+      "status": "answered",
+      "response": "handle"
+    },
+    {
+      "id": "dec-029",
+      "name": "doorstep-high-risk-no-answer",
+      "resident_id": "r05",
+      "status": "answered",
+      "response": "handle"
+    },
+    {
+      "id": "dec-030",
+      "name": "doorstep-high-risk-no-answer",
+      "resident_id": "r43",
+      "status": "answered",
+      "response": "handle"
+    }
+  ],
+  "cases": [
+    {
+      "resident_id": "r05",
+      "wave": 1,
+      "points": 13,
+      "state": "RESOLVED",
+      "attempts": 3,
+      "result": "NO_ANSWER",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "NO_ANSWER",
+      "outcome": "captain_handling",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NO_ANSWER",
+        "NO_ANSWER->QUEUED",
+        "QUEUED->CALLING",
+        "CALLING->NO_ANSWER",
+        "NO_ANSWER->QUEUED",
+        "QUEUED->CALLING",
+        "CALLING->NO_ANSWER",
+        "NO_ANSWER->ESCALATED",
+        "ESCALATED->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r01",
+      "wave": 1,
+      "points": 10,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "URGENT",
+      "needs": [],
+      "red_flags": [
+        "confusion",
+        "dizziness_fainting",
+        "not_sweating_hot"
+      ],
+      "backstop_raised": false,
+      "expected": "URGENT",
+      "outcome": "captain handling",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->URGENT",
+        "URGENT->ESCALATED",
+        "ESCALATED->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r04",
+      "wave": 1,
+      "points": 10,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "NEEDS_HELP",
+      "needs": [
+        "ride",
+        "cooling"
+      ],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "NEEDS_HELP",
+      "outcome": "checked by volunteer",
+      "assigned_volunteer": "vol-tom",
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NEEDS_HELP",
+        "NEEDS_HELP->ESCALATED",
+        "ESCALATED->ASSIGNED",
+        "ASSIGNED->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r08",
+      "wave": 1,
+      "points": 9,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "OK",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "OK",
+      "outcome": "ok",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r17",
+      "wave": 1,
+      "points": 9,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "NEEDS_HELP",
+      "needs": [
+        "ride",
+        "cooling"
+      ],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "NEEDS_HELP",
+      "outcome": "checked by volunteer",
+      "assigned_volunteer": "vol-tom",
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NEEDS_HELP",
+        "NEEDS_HELP->ESCALATED",
+        "ESCALATED->ASSIGNED",
+        "ASSIGNED->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r30",
+      "wave": 1,
+      "points": 9,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "URGENT",
+      "needs": [],
+      "red_flags": [
+        "chest_pain"
+      ],
+      "backstop_raised": false,
+      "expected": "URGENT",
+      "outcome": "captain handling",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->URGENT",
+        "URGENT->ESCALATED",
+        "ESCALATED->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r02",
+      "wave": 1,
+      "points": 8,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "URGENT",
+      "needs": [],
+      "red_flags": [
+        "other",
+        "confusion"
+      ],
+      "backstop_raised": false,
+      "expected": "URGENT",
+      "outcome": "captain handling",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->URGENT",
+        "URGENT->ESCALATED",
+        "ESCALATED->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r03",
+      "wave": 1,
+      "points": 8,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "NEEDS_HELP",
+      "needs": [
+        "water"
+      ],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "NEEDS_HELP",
+      "outcome": "checked by volunteer",
+      "assigned_volunteer": "vol-priya",
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NEEDS_HELP",
+        "NEEDS_HELP->ESCALATED",
+        "ESCALATED->ASSIGNED",
+        "ASSIGNED->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r12",
+      "wave": 1,
+      "points": 8,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "OK",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "OK",
+      "outcome": "ok",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r26",
+      "wave": 1,
+      "points": 8,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "NEEDS_HELP",
+      "needs": [
+        "company"
+      ],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "NEEDS_HELP",
+      "outcome": "checked by volunteer",
+      "assigned_volunteer": "vol-sam",
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NEEDS_HELP",
+        "NEEDS_HELP->ESCALATED",
+        "ESCALATED->ASSIGNED",
+        "ASSIGNED->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r31",
+      "wave": 1,
+      "points": 8,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "URGENT",
+      "needs": [],
+      "red_flags": [
+        "dizziness_fainting"
+      ],
+      "backstop_raised": false,
+      "expected": "URGENT",
+      "outcome": "captain handling",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->URGENT",
+        "URGENT->ESCALATED",
+        "ESCALATED->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r38",
+      "wave": 1,
+      "points": 8,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "URGENT",
+      "needs": [],
+      "red_flags": [
+        "trouble_breathing"
+      ],
+      "backstop_raised": false,
+      "expected": "URGENT",
+      "outcome": "captain handling",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->URGENT",
+        "URGENT->ESCALATED",
+        "ESCALATED->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r44",
+      "wave": 1,
+      "points": 8,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "NEEDS_HELP",
+      "needs": [
+        "cooling"
+      ],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "NEEDS_HELP",
+      "outcome": "checked by volunteer",
+      "assigned_volunteer": "vol-tom",
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NEEDS_HELP",
+        "NEEDS_HELP->ESCALATED",
+        "ESCALATED->ASSIGNED",
+        "ASSIGNED->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r48",
+      "wave": 1,
+      "points": 8,
+      "state": "RESOLVED",
+      "attempts": 3,
+      "result": "NO_ANSWER",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "NO_ANSWER",
+      "outcome": "captain_handling",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NO_ANSWER",
+        "NO_ANSWER->QUEUED",
+        "QUEUED->CALLING",
+        "CALLING->NO_ANSWER",
+        "NO_ANSWER->QUEUED",
+        "QUEUED->CALLING",
+        "CALLING->NO_ANSWER",
+        "NO_ANSWER->ESCALATED",
+        "ESCALATED->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r33",
+      "wave": 2,
+      "points": 7,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "URGENT",
+      "needs": [],
+      "red_flags": [
+        "cannot_get_up"
+      ],
+      "backstop_raised": false,
+      "expected": "URGENT",
+      "outcome": "captain handling",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->URGENT",
+        "URGENT->ESCALATED",
+        "ESCALATED->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r09",
+      "wave": 2,
+      "points": 6,
+      "state": "RESOLVED",
+      "attempts": 2,
+      "result": "OK",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "OK",
+      "outcome": "ok",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->UNCLEAR",
+        "UNCLEAR->QUEUED",
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r10",
+      "wave": 2,
+      "points": 6,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "OK",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "OK",
+      "outcome": "ok",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r15",
+      "wave": 2,
+      "points": 6,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "OK",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "OK",
+      "outcome": "ok",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r16",
+      "wave": 2,
+      "points": 6,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "OK",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "OK",
+      "outcome": "ok",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r24",
+      "wave": 2,
+      "points": 6,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "NEEDS_HELP",
+      "needs": [
+        "ride"
+      ],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "NEEDS_HELP",
+      "outcome": "checked by volunteer",
+      "assigned_volunteer": "vol-sam",
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NEEDS_HELP",
+        "NEEDS_HELP->ASSIGNED",
+        "ASSIGNED->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r47",
+      "wave": 2,
+      "points": 6,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "NEEDS_HELP",
+      "needs": [
+        "water"
+      ],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "NEEDS_HELP",
+      "outcome": "checked by volunteer",
+      "assigned_volunteer": "vol-sam",
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NEEDS_HELP",
+        "NEEDS_HELP->ASSIGNED",
+        "ASSIGNED->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r06",
+      "wave": 2,
+      "points": 5,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "OK",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "OK",
+      "outcome": "ok",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r18",
+      "wave": 2,
+      "points": 5,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "NEEDS_HELP",
+      "needs": [
+        "water"
+      ],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "NEEDS_HELP",
+      "outcome": "checked by volunteer",
+      "assigned_volunteer": "vol-tom",
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NEEDS_HELP",
+        "NEEDS_HELP->ASSIGNED",
+        "ASSIGNED->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r19",
+      "wave": 2,
+      "points": 5,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "NEEDS_HELP",
+      "needs": [
+        "ride",
+        "cooling"
+      ],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "NEEDS_HELP",
+      "outcome": "checked by volunteer",
+      "assigned_volunteer": "vol-tom",
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NEEDS_HELP",
+        "NEEDS_HELP->ASSIGNED",
+        "ASSIGNED->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r28",
+      "wave": 2,
+      "points": 5,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "NEEDS_HELP",
+      "needs": [
+        "food",
+        "company"
+      ],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "NEEDS_HELP",
+      "outcome": "checked by volunteer",
+      "assigned_volunteer": "vol-tom",
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NEEDS_HELP",
+        "NEEDS_HELP->ASSIGNED",
+        "ASSIGNED->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r34",
+      "wave": 2,
+      "points": 5,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "OK",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "URGENT",
+      "outcome": "ok",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r41",
+      "wave": 2,
+      "points": 5,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "OK",
+      "needs": [
+        "water"
+      ],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "OK",
+      "outcome": "ok",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r45",
+      "wave": 2,
+      "points": 5,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "OK",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "OK",
+      "outcome": "ok",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r13",
+      "wave": 3,
+      "points": 4,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "OK",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "OK",
+      "outcome": "ok",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r20",
+      "wave": 3,
+      "points": 4,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "OK",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "OK",
+      "outcome": "ok",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r29",
+      "wave": 3,
+      "points": 4,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "NEEDS_HELP",
+      "needs": [
+        "power"
+      ],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "NEEDS_HELP",
+      "outcome": "checked by volunteer",
+      "assigned_volunteer": "vol-tom",
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NEEDS_HELP",
+        "NEEDS_HELP->ASSIGNED",
+        "ASSIGNED->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r36",
+      "wave": 3,
+      "points": 4,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "URGENT",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "URGENT",
+      "outcome": "captain handling",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->URGENT",
+        "URGENT->ESCALATED",
+        "ESCALATED->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r42",
+      "wave": 3,
+      "points": 4,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "OK",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "OK",
+      "outcome": "ok",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r46",
+      "wave": 3,
+      "points": 4,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "OK",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "OK",
+      "outcome": "ok",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r11",
+      "wave": 3,
+      "points": 3,
+      "state": "RESOLVED",
+      "attempts": 3,
+      "result": "OK",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "OK",
+      "outcome": "ok",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->UNCLEAR",
+        "UNCLEAR->QUEUED",
+        "QUEUED->CALLING",
+        "CALLING->UNCLEAR",
+        "UNCLEAR->QUEUED",
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r14",
+      "wave": 3,
+      "points": 3,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "OK",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "OK",
+      "outcome": "ok",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r21",
+      "wave": 3,
+      "points": 3,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "OK",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "OK",
+      "outcome": "ok",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r22",
+      "wave": 3,
+      "points": 3,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "OK",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "OK",
+      "outcome": "ok",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r27",
+      "wave": 3,
+      "points": 3,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "OK",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "OK",
+      "outcome": "ok",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r35",
+      "wave": 3,
+      "points": 3,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "URGENT",
+      "needs": [],
+      "red_flags": [
+        "heat_indoors_extreme"
+      ],
+      "backstop_raised": false,
+      "expected": "URGENT",
+      "outcome": "captain handling",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->URGENT",
+        "URGENT->ESCALATED",
+        "ESCALATED->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r43",
+      "wave": 3,
+      "points": 3,
+      "state": "RESOLVED",
+      "attempts": 3,
+      "result": "NO_ANSWER",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "NO_ANSWER",
+      "outcome": "captain_handling",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NO_ANSWER",
+        "NO_ANSWER->QUEUED",
+        "QUEUED->CALLING",
+        "CALLING->NO_ANSWER",
+        "NO_ANSWER->QUEUED",
+        "QUEUED->CALLING",
+        "CALLING->NO_ANSWER",
+        "NO_ANSWER->ESCALATED",
+        "ESCALATED->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r39",
+      "wave": 3,
+      "points": 2,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "URGENT",
+      "needs": [],
+      "red_flags": [
+        "chest_pain",
+        "other"
+      ],
+      "backstop_raised": true,
+      "expected": "OK",
+      "outcome": "captain handling",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->URGENT",
+        "URGENT->ESCALATED",
+        "ESCALATED->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r25",
+      "wave": 3,
+      "points": 1,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "NEEDS_HELP",
+      "needs": [
+        "medication_access"
+      ],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "NEEDS_HELP",
+      "outcome": "checked by volunteer",
+      "assigned_volunteer": "vol-priya",
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NEEDS_HELP",
+        "NEEDS_HELP->ASSIGNED",
+        "ASSIGNED->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r07",
+      "wave": 3,
+      "points": 0,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "OK",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "OK",
+      "outcome": "ok",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r23",
+      "wave": 3,
+      "points": 0,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "OK",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "OK",
+      "outcome": "ok",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r32",
+      "wave": 3,
+      "points": 0,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "URGENT",
+      "needs": [],
+      "red_flags": [
+        "confusion"
+      ],
+      "backstop_raised": false,
+      "expected": "URGENT",
+      "outcome": "captain handling",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->URGENT",
+        "URGENT->ESCALATED",
+        "ESCALATED->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r37",
+      "wave": 3,
+      "points": 0,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "OK",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "OK",
+      "outcome": "ok",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ]
+    },
+    {
+      "resident_id": "r40",
+      "wave": 3,
+      "points": 0,
+      "state": "RESOLVED",
+      "attempts": 1,
+      "result": "OK",
+      "needs": [],
+      "red_flags": [],
+      "backstop_raised": false,
+      "expected": "OK",
+      "outcome": "ok",
+      "assigned_volunteer": null,
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ]
+    }
+  ],
+  "wall_seconds": 314.9,
+  "cost_usd": 0.5555,
+  "tokens": {
+    "us.amazon.nova-2-lite-v1:0": {
+      "input_tokens": 1369883,
+      "output_tokens": 29803,
+      "usd": 0.534
+    },
+    "us.amazon.nova-micro-v1:0": {
+      "input_tokens": 571614,
+      "output_tokens": 10549,
+      "usd": 0.0215
+    }
+  }
+}

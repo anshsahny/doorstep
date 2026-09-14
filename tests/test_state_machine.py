@@ -87,7 +87,7 @@ def test_illegal_transitions_raise(start: CaseState, end: CaseState) -> None:
 
 def test_terminal_and_settled_sets() -> None:
     assert TERMINAL == {CaseState.RESOLVED}
-    assert AWAITING_HUMAN == {CaseState.ESCALATED}
+    assert AWAITING_HUMAN == {CaseState.ESCALATED, CaseState.ASSIGNED}
     assert is_terminal(_case(CaseState.RESOLVED))
     assert not is_terminal(_case(CaseState.ESCALATED))
     assert is_settled(_case(CaseState.ESCALATED))

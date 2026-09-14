@@ -1,0 +1,24 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p35_otis_urgent_hidden_oven
+resident_id: r35
+display_name: Otis Kristiansen
+language: en
+behaviour: answers
+traits:
+  age: 87
+  lives_alone: false
+  style: stoic, 'I've seen worse'
+  home: house with a broken AC; son visits in the evening
+context: Otis's AC broke two days ago. Inside it is like an oven, well over a hundred degrees by his thermometer,
+  but he is stubborn and says he is used to it. He only admits the temperature when asked about conditions
+  indoors.
+goal: Say he's fine, he's seen worse. When asked if it's cool where he is, say it's like an oven in here,
+  over a hundred on the thermometer, but he's used to it. Says no to help at first.
+max_turns: 6
+ground_truth:
+  status: URGENT
+  red_flags:
+  - heat_indoors_extreme
+  needs: []
+  hidden: true
+fictional: true

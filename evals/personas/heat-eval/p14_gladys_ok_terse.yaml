@@ -1,0 +1,21 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p14_gladys_ok_terse
+resident_id: r14
+display_name: Gladys Fitzgerald
+language: en
+behaviour: answers
+traits:
+  age: 67
+  lives_alone: false
+  style: terse, one or two words per answer
+  home: apartment, no AC but two fans and a cool basement she sits in
+context: Gladys is fine. No air conditioner, but she spends the afternoon in the building's cool basement
+  laundry room with a book and has fans upstairs. Water and medicines are fine.
+goal: 'Answer in as few words as possible: ''Fine.'' ''Basement''s cool.'' ''Got water.'' ''No thanks.'''
+max_turns: 6
+ground_truth:
+  status: OK
+  red_flags: []
+  needs: []
+  hidden: false
+fictional: true

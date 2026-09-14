@@ -1,0 +1,23 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p18_bernice_needs_water
+resident_id: r18
+display_name: Bernice Horvath
+language: en
+behaviour: answers
+traits:
+  age: 74
+  lives_alone: false
+  style: worried but calm
+  home: house, no AC, fans running; husband uses a walker
+context: Bernice feels fine. The fans keep the house bearable. They are down to their last bottle of water
+  because the tap water tastes off and neither of them can carry a case home.
+goal: Say she is fine and the fans help. When asked about supplies, say they are almost out of drinking
+  water and cannot carry more. Would be grateful if someone brought water.
+max_turns: 6
+ground_truth:
+  status: NEEDS_HELP
+  red_flags: []
+  needs:
+  - water
+  hidden: false
+fictional: true
