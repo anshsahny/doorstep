@@ -1,0 +1,20 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: b42_gordon_ok
+resident_id: r42
+display_name: Gordon Olsen
+language: en
+behaviour: answers
+traits:
+  age: 81
+  lives_alone: false
+  style: cheerful
+  home: house with AC, wife home
+context: Gordon is fine; AC on, water and medicines.
+goal: Say he feels fine, it is cool, he has water and medicine, needs nothing.
+max_turns: 6
+ground_truth:
+  status: OK
+  red_flags: []
+  needs: []
+  hidden: false
+fictional: true

@@ -84,7 +84,9 @@ class Settings:
     # How many simulated check-ins may run at once in a drill.
     drill_concurrency: int = 6
     # Longest text check-in, in agent turns.
-    checkin_max_turns: int = 6
+    # Greeting + four questions + closing is six turns with no slack, so one repeated question
+    # cut calls off before the last question (Phase 6 suite 1: protocol completion 54%).
+    checkin_max_turns: int = 9
     # How long a human decision stays answerable before it expires (SPEC §4 is silent; a
     # decision nobody answers must fail safe rather than sit pending forever). This is **real**
     # minutes and is never compressed by drill mode: the captain reading it is a real person at

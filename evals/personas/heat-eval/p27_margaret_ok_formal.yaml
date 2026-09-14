@@ -1,0 +1,21 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p27_margaret_ok_formal
+resident_id: r27
+display_name: Margaret Harris
+language: en
+behaviour: answers
+traits:
+  age: 82
+  lives_alone: false
+  style: very polite, formal, precise
+  home: condo with AC; her husband is home
+context: Margaret is fine. The AC works, she has water and her medicines, her husband is with her.
+goal: 'Answer each question politely and precisely: feeling well, cool indoors, has supplies, no visit
+  or ride needed, thank you for calling.'
+max_turns: 6
+ground_truth:
+  status: OK
+  red_flags: []
+  needs: []
+  hidden: false
+fictional: true

@@ -1,0 +1,21 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p16_patricia_ok_hard_of_hearing
+resident_id: r16
+display_name: Patricia Nakamura
+language: en
+behaviour: answers
+traits:
+  age: 76
+  lives_alone: true
+  hearing: hard of hearing; asks the caller to speak up and repeat
+  home: apartment with AC
+context: Patricia is fine but hard of hearing. She mishears one question and asks for it again.
+goal: Ask the caller to repeat at least once ('Say again, dear?'). Once she hears each question, say she
+  feels fine, it is cool inside, she has water and medicine, and needs nothing.
+max_turns: 8
+ground_truth:
+  status: OK
+  red_flags: []
+  needs: []
+  hidden: false
+fictional: true

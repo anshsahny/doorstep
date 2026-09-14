@@ -14,6 +14,7 @@ Nothing here can lower a status. Every disagreement is written to the audit log.
 from __future__ import annotations
 
 import asyncio
+import re
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -86,8 +87,10 @@ def system_prompt(ctx: RunContext) -> str:
         "incident. Built with Strands Agents. Read the whole transcript and the recorded "
         "answers.\n\n"
         "Status rules:\n"
-        "- URGENT if the resident mentions any red flag below, even in passing or understated, "
-        "or says it is an emergency.\n"
+        "- URGENT if the resident mentions any red flag below, even in passing, understated, "
+        "joked about or described as fine (e.g. 'fine, just foggy', not knowing the day or "
+        "whether it is morning or evening, putting things in odd places, the room tilting, "
+        "a red-flag sign described as good news), or says it is an emergency.\n"
         "- NEEDS_HELP if they are safe now but lack something on the needs list, or ask for a "
         "visit or a ride.\n"
         "- OK if they are fine and have what they need.\n"
@@ -128,13 +131,55 @@ def transcript_text(attempt: CheckinAttempt) -> str:
     )
 
 
+_WORD = re.compile(r"[\wáéíóúñü']+", re.IGNORECASE)
+
+
+def _asked_and_answered(question_text: str, attempt: CheckinAttempt, *, share: float) -> bool:
+    """The agent said (most of) the question aloud and the resident replied after it.
+
+    `share` is the fraction of the question's longer words that must appear in one agent turn.
+    """
+    words = {w.lower() for w in _WORD.findall(question_text) if len(w) > 3}
+    if not words:
+        return False
+    turns = attempt.transcript
+    for i, turn in enumerate(turns):
+        if turn.speaker != "agent":
+            continue
+        said = {w.lower() for w in _WORD.findall(turn.text)}
+        if len(words & said) / len(words) < share:
+            continue
+        reply = next((t for t in turns[i + 1 :] if t.speaker == "resident"), None)
+        if reply and reply.text.strip() and not reply.text.startswith("["):
+            return True
+    return False
+
+
 def unanswered_required(ctx: RunContext, attempt: CheckinAttempt) -> list[str]:
-    """Required protocol questions (from the profile) the call never got an answer to."""
-    return [
-        q
-        for q in ctx.profile.required_question_ids()
-        if not str(attempt.answers.get(q, "")).strip()
-    ]
+    """Required protocol questions (from the profile) the call never got an answer to.
+
+    Both directions were wrong before Phase 6, and suite 1 caught each:
+
+    * Nova sometimes asked every question aloud but never called `record_answer`, so four OK
+      calls became UNCLEAR. A question asked nearly word for word and answered now counts.
+    * Once it called `record_answer` for all four questions **without asking any of them** and
+      went straight to the closing (Ruth, trial 3), so a hidden-urgent resident read as OK. A
+      recorded answer now also needs the question to have been asked in the transcript, loosely
+      enough to allow the agent's own phrasing.
+    """
+    missing = []
+    required = ctx.profile.required_question_ids()
+    for q in ctx.profile.checkin_questions:
+        if q.id not in required:
+            continue
+        recorded = bool(str(attempt.answers.get(q.id, "")).strip())
+        texts = [q.text(code) for code in ("en", "es")]
+        if recorded and any(_asked_and_answered(x, attempt, share=0.5) for x in texts):
+            continue
+        if any(_asked_and_answered(x, attempt, share=0.8) for x in texts):
+            continue
+        missing.append(q.id)
+    return missing
 
 
 def _validate_vocab(ctx: RunContext, resident: Resident, raw: Classification) -> CheckinResult:

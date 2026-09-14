@@ -453,6 +453,11 @@ def send_volunteer_task(
     if case.state == CaseState.ASSIGNED and case.assigned_volunteer == v.id:
         return f"{r.id} is already assigned to {v.id}"  # idempotent: the model got there first
 
+    if not r.consent.share_with_volunteer:
+        # The brief template already says "the resident"; the model-written reason named them
+        # anyway (Phase 6 trajectory suite, s12). Scrub the names deterministically.
+        for name in sorted({r.name, r.first_name}, key=len, reverse=True):
+            reason = re.sub(re.escape(name), "the resident", reason, flags=re.IGNORECASE)
     transition(case, CaseState.ASSIGNED, reason=f"volunteer {v.id} assigned: {reason}")
     case.assigned_volunteer = v.id
     ctx.store.save_case(case)
@@ -622,10 +627,18 @@ def escalate_to_captain(
         return f"error: case {resident_id} has no check-in result yet"
     if case.state == CaseState.RESOLVED:
         return f"error: case {resident_id} is already resolved"
+    this_use = str(tool_context.tool_use.get("toolUseId") or "")
+    already = _captain_decision_on_case(ctx, resident_id, this_use)
+    if already is not None:
+        # One decision per resident (Phase 6): a model that escalates again after the captain
+        # declined a door-knock sent the captain a second message about the same person.
+        return already
+    last = case.latest_result
     if case.state == CaseState.URGENT:
         name = "doorstep-urgent-red-flag"
     elif case.state in (CaseState.NO_ANSWER, CaseState.UNCLEAR) or (
-        case.state == CaseState.ESCALATED and not case.attempt_log[-1].answered
+        case.state == CaseState.ESCALATED
+        and (not case.attempt_log[-1].answered or (last and last.status == "UNCLEAR"))
     ):
         name = "doorstep-high-risk-no-answer"
     else:
@@ -719,6 +732,31 @@ def escalate_to_captain(
     return f'The captain chose "{label}" for {r.id}. Record it with close_case.'
 
 
+def _captain_decision_on_case(ctx: RunContext, resident_id: str, this_use: str) -> str | None:
+    """Why the captain must not be asked again about this resident, or None.
+
+    A decision raised by this very tool use is not a second one: an interrupted tool re-runs
+    from the top on resume and must find its own record.
+    """
+    for d in ctx.store.decisions(ctx.incident_id):
+        if d.resident_id != resident_id or d.audience != ctx.org.captain_id:
+            continue
+        if d.tool_use_id == this_use:
+            continue
+        if d.status in ("draft", "pending"):
+            return (
+                f"not escalated: the captain already has {d.id} about {resident_id}. Do not ask "
+                "again; stop and wait for their answer."
+            )
+        chosen = d.option(d.response or "") if d.status == "answered" else None
+        if chosen is not None:
+            return (
+                f'not escalated: the captain already chose "{chosen.label}" for {resident_id} '
+                f"in {d.id}. Carry out that choice (close_case if they are handling it) and stop."
+            )
+    return None
+
+
 @tool(context=True)
 def record_emergency_call(resident_id: str, by: str, tool_context: ToolContext) -> str:
     """Record that a human made an emergency (911) call for a resident. Humans only.
@@ -762,6 +800,23 @@ def close_case(resident_id: str, outcome: str, reason: str, tool_context: ToolCo
         return f"error: no case for {resident_id}"
     if CaseState.RESOLVED not in ALLOWED[case.state]:
         return f"error: cannot close a case in state {case.state}; escalate or assign first"
+    open_task = next(
+        (
+            d
+            for d in ctx.store.decisions(ctx.incident_id)
+            if d.resident_id == resident_id
+            and d.name == VOLUNTEER_UPDATE
+            and d.status in ("draft", "pending")
+        ),
+        None,
+    )
+    if case.state == CaseState.ASSIGNED and open_task is not None:
+        # Found by the Phase 6 trajectory suite: the case read RESOLVED while the volunteer's
+        # "On my way / They're OK" task was still open. The volunteer's reply closes it.
+        return (
+            f"not closed: {open_task.audience} is on the way ({open_task.id}); their reply "
+            "closes this case. Stop here."
+        )
     transition(case, CaseState.RESOLVED, reason=f"{outcome}: {reason}")
     case.outcome = outcome
     ctx.store.save_case(case)

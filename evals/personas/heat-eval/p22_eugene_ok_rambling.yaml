@@ -1,0 +1,21 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p22_eugene_ok_rambling
+resident_id: r22
+display_name: Eugene Kowalski
+language: en
+behaviour: answers
+traits:
+  age: 85
+  lives_alone: false
+  style: rambling, mentions the heat in 1961
+  home: house with AC; his daughter lives with him
+context: Eugene is fine. His daughter keeps the AC on and brings him water. He likes to reminisce and
+  answers slowly, but he is clear-headed and knows exactly what day it is.
+goal: 'Reminisce a little, then answer: feels fine, cool inside, has water and medicine, no visit needed.'
+max_turns: 7
+ground_truth:
+  status: OK
+  red_flags: []
+  needs: []
+  hidden: false
+fictional: true

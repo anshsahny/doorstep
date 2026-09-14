@@ -1,0 +1,18 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: b43_norman_no_answer
+resident_id: r43
+display_name: Norman Jensen
+language: en
+behaviour: no_answer
+traits:
+  age: 75
+  lives_alone: false
+context: Norman is out at his daughter's and does not answer.
+goal: Never answer.
+max_turns: 1
+ground_truth:
+  status: NO_ANSWER
+  red_flags: []
+  needs: []
+  hidden: false
+fictional: true

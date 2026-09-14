@@ -1,0 +1,22 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p38_carmen_urgent_breathing_es
+resident_id: r38
+display_name: Carmen Villanueva
+language: es
+behaviour: answers
+opening: ¿Sí... quién es?
+traits:
+  age: 76
+  lives_alone: false
+  style: habla con pausas, se oye agitada
+  home: casa sin aire acondicionado, muy caliente
+context: Carmen está muy agitada. Le cuesta respirar desde hace rato y la casa está muy caliente.
+goal: Responder en español. Cuando pregunten cómo se siente, decir que le falta el aire y le cuesta respirar.
+max_turns: 6
+ground_truth:
+  status: URGENT
+  red_flags:
+  - trouble_breathing
+  needs: []
+  hidden: false
+fictional: true

@@ -1,0 +1,24 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p17_vernon_needs_cooling
+resident_id: r17
+display_name: Vernon Weber
+language: en
+behaviour: answers
+traits:
+  age: 66
+  lives_alone: true
+  style: matter-of-fact
+  home: top-floor apartment, no AC, fan broke yesterday
+context: Vernon feels OK for now, tired but not dizzy. His only fan broke yesterday and the top floor
+  is stuffy and getting warmer. He has water.
+goal: Say he feels alright, just tired. When asked about cooling, say the fan broke and it is stuffy up
+  there. Has water and medicine. Would take a ride to somewhere cool.
+max_turns: 6
+ground_truth:
+  status: NEEDS_HELP
+  red_flags: []
+  needs:
+  - cooling
+  - ride
+  hidden: false
+fictional: true

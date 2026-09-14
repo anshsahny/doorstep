@@ -1,0 +1,1274 @@
+{
+  "suite": "dispatcher",
+  "label": "before",
+  "metrics": {
+    "runs": 22,
+    "scenarios": 11,
+    "runs_passed": 12,
+    "pass_rate": 0.5455,
+    "check_pass_rates": {
+      "captain_decisions": 0.9091,
+      "decision_name": 2.75,
+      "decision_name_not": 10.0,
+      "final_state": 1.0,
+      "first_tool": 2.75,
+      "in_order": 1.5714,
+      "no_forbidden_tool": 1.0,
+      "no_violations": 0.9091,
+      "resolved_means_nothing_pending": 0.6364
+    },
+    "double_decision_runs": 2,
+    "resolved_with_pending_runs": 8,
+    "policy_violations": 2,
+    "failed": [
+      "s04_needs_high_risk_door_knock_approved#1: resolved_means_nothing_pending",
+      "s04_needs_high_risk_door_knock_approved#2: resolved_means_nothing_pending",
+      "s05_needs_high_risk_captain_handles_it#1: captain_decisions, resolved_means_nothing_pending",
+      "s05_needs_high_risk_captain_handles_it#2: captain_decisions, resolved_means_nothing_pending",
+      "s06_needs_low_risk_volunteer_no_approval#1: resolved_means_nothing_pending",
+      "s06_needs_low_risk_volunteer_no_approval#2: resolved_means_nothing_pending",
+      "s10_unclear_three_times_not_an_unmet_need#1: decision_name_not",
+      "s10_unclear_three_times_not_an_unmet_need#2: decision_name_not",
+      "s12_needs_company_no_sharing_consent#1: resolved_means_nothing_pending, no_violations",
+      "s12_needs_company_no_sharing_consent#2: resolved_means_nothing_pending, no_violations"
+    ]
+  },
+  "rows": [
+    {
+      "scenario": "s01_urgent_send_volunteer",
+      "trial": 1,
+      "checks": {
+        "first_tool": true,
+        "no_forbidden_tool": true,
+        "captain_decisions": true,
+        "decision_name": true,
+        "final_state": true,
+        "resolved_means_nothing_pending": true,
+        "no_violations": true
+      },
+      "passed": true,
+      "tools": [
+        "escalate_to_captain",
+        "escalate_to_captain"
+      ],
+      "captain_decisions": 1,
+      "decision_names": [
+        "doorstep-urgent-red-flag",
+        "doorstep-volunteer-update"
+      ],
+      "answers": [
+        "dec-001 doorstep-urgent-red-flag -> send_volunteer",
+        "dec-002 doorstep-volunteer-update -> ok"
+      ],
+      "final_state": "RESOLVED",
+      "pending": 0,
+      "snapshots": [
+        {
+          "state": "ESCALATED",
+          "pending": 1
+        },
+        {
+          "state": "ASSIGNED",
+          "pending": 1
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        }
+      ],
+      "denials": [],
+      "violations": [],
+      "messages": [
+        "volunteer_task -> vol-sam"
+      ],
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->URGENT",
+        "URGENT->ESCALATED",
+        "ESCALATED->ASSIGNED",
+        "ASSIGNED->RESOLVED"
+      ],
+      "error": ""
+    },
+    {
+      "scenario": "s01_urgent_send_volunteer",
+      "trial": 2,
+      "checks": {
+        "first_tool": true,
+        "no_forbidden_tool": true,
+        "captain_decisions": true,
+        "decision_name": true,
+        "final_state": true,
+        "resolved_means_nothing_pending": true,
+        "no_violations": true
+      },
+      "passed": true,
+      "tools": [
+        "escalate_to_captain",
+        "escalate_to_captain"
+      ],
+      "captain_decisions": 1,
+      "decision_names": [
+        "doorstep-urgent-red-flag",
+        "doorstep-volunteer-update"
+      ],
+      "answers": [
+        "dec-001 doorstep-urgent-red-flag -> send_volunteer",
+        "dec-002 doorstep-volunteer-update -> ok"
+      ],
+      "final_state": "RESOLVED",
+      "pending": 0,
+      "snapshots": [
+        {
+          "state": "ESCALATED",
+          "pending": 1
+        },
+        {
+          "state": "ASSIGNED",
+          "pending": 1
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        }
+      ],
+      "denials": [],
+      "violations": [],
+      "messages": [
+        "volunteer_task -> vol-sam"
+      ],
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->URGENT",
+        "URGENT->ESCALATED",
+        "ESCALATED->ASSIGNED",
+        "ASSIGNED->RESOLVED"
+      ],
+      "error": ""
+    },
+    {
+      "scenario": "s03_urgent_with_needs_escalates_only",
+      "trial": 1,
+      "checks": {
+        "first_tool": true,
+        "no_forbidden_tool": true,
+        "captain_decisions": true,
+        "final_state": true,
+        "resolved_means_nothing_pending": true,
+        "no_violations": true
+      },
+      "passed": true,
+      "tools": [
+        "escalate_to_captain",
+        "escalate_to_captain"
+      ],
+      "captain_decisions": 1,
+      "decision_names": [
+        "doorstep-urgent-red-flag"
+      ],
+      "answers": [
+        "dec-001 doorstep-urgent-red-flag -> handle"
+      ],
+      "final_state": "RESOLVED",
+      "pending": 0,
+      "snapshots": [
+        {
+          "state": "ESCALATED",
+          "pending": 1
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        }
+      ],
+      "denials": [],
+      "violations": [],
+      "messages": [],
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->URGENT",
+        "URGENT->ESCALATED",
+        "ESCALATED->RESOLVED"
+      ],
+      "error": ""
+    },
+    {
+      "scenario": "s03_urgent_with_needs_escalates_only",
+      "trial": 2,
+      "checks": {
+        "first_tool": true,
+        "no_forbidden_tool": true,
+        "captain_decisions": true,
+        "final_state": true,
+        "resolved_means_nothing_pending": true,
+        "no_violations": true
+      },
+      "passed": true,
+      "tools": [
+        "escalate_to_captain",
+        "escalate_to_captain"
+      ],
+      "captain_decisions": 1,
+      "decision_names": [
+        "doorstep-urgent-red-flag"
+      ],
+      "answers": [
+        "dec-001 doorstep-urgent-red-flag -> handle"
+      ],
+      "final_state": "RESOLVED",
+      "pending": 0,
+      "snapshots": [
+        {
+          "state": "ESCALATED",
+          "pending": 1
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        }
+      ],
+      "denials": [],
+      "violations": [],
+      "messages": [],
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->URGENT",
+        "URGENT->ESCALATED",
+        "ESCALATED->RESOLVED"
+      ],
+      "error": ""
+    },
+    {
+      "scenario": "s04_needs_high_risk_door_knock_approved",
+      "trial": 1,
+      "checks": {
+        "in_order": true,
+        "no_forbidden_tool": true,
+        "captain_decisions": true,
+        "decision_name": true,
+        "final_state": true,
+        "resolved_means_nothing_pending": false,
+        "no_violations": true
+      },
+      "passed": false,
+      "tools": [
+        "find_nearest_volunteers",
+        "assign_volunteer",
+        "assign_volunteer",
+        "close_case"
+      ],
+      "captain_decisions": 1,
+      "decision_names": [
+        "doorstep-approve-door-knock",
+        "doorstep-volunteer-update"
+      ],
+      "answers": [
+        "dec-001 doorstep-approve-door-knock -> approve",
+        "dec-002 doorstep-volunteer-update -> ok"
+      ],
+      "final_state": "RESOLVED",
+      "pending": 0,
+      "snapshots": [
+        {
+          "state": "ESCALATED",
+          "pending": 1
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 1
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        }
+      ],
+      "denials": [],
+      "violations": [],
+      "messages": [
+        "volunteer_task -> vol-priya"
+      ],
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NEEDS_HELP",
+        "NEEDS_HELP->ESCALATED",
+        "ESCALATED->ASSIGNED",
+        "ASSIGNED->RESOLVED"
+      ],
+      "error": ""
+    },
+    {
+      "scenario": "s04_needs_high_risk_door_knock_approved",
+      "trial": 2,
+      "checks": {
+        "in_order": true,
+        "no_forbidden_tool": true,
+        "captain_decisions": true,
+        "decision_name": true,
+        "final_state": true,
+        "resolved_means_nothing_pending": false,
+        "no_violations": true
+      },
+      "passed": false,
+      "tools": [
+        "find_nearest_volunteers",
+        "assign_volunteer",
+        "assign_volunteer",
+        "close_case"
+      ],
+      "captain_decisions": 1,
+      "decision_names": [
+        "doorstep-approve-door-knock",
+        "doorstep-volunteer-update"
+      ],
+      "answers": [
+        "dec-001 doorstep-approve-door-knock -> approve",
+        "dec-002 doorstep-volunteer-update -> ok"
+      ],
+      "final_state": "RESOLVED",
+      "pending": 0,
+      "snapshots": [
+        {
+          "state": "ESCALATED",
+          "pending": 1
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 1
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        }
+      ],
+      "denials": [],
+      "violations": [],
+      "messages": [
+        "volunteer_task -> vol-priya"
+      ],
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NEEDS_HELP",
+        "NEEDS_HELP->ESCALATED",
+        "ESCALATED->ASSIGNED",
+        "ASSIGNED->RESOLVED"
+      ],
+      "error": ""
+    },
+    {
+      "scenario": "s05_needs_high_risk_captain_handles_it",
+      "trial": 1,
+      "checks": {
+        "in_order": true,
+        "no_forbidden_tool": true,
+        "captain_decisions": false,
+        "final_state": true,
+        "resolved_means_nothing_pending": false,
+        "no_violations": true
+      },
+      "passed": false,
+      "tools": [
+        "find_nearest_volunteers",
+        "assign_volunteer",
+        "assign_volunteer",
+        "escalate_to_captain",
+        "escalate_to_captain",
+        "close_case",
+        "get_resident_memory",
+        "find_relief_centres",
+        "send_resident_tip"
+      ],
+      "captain_decisions": 2,
+      "decision_names": [
+        "doorstep-approve-door-knock",
+        "doorstep-unmet-need"
+      ],
+      "answers": [
+        "dec-001 doorstep-approve-door-knock -> handle",
+        "dec-002 doorstep-unmet-need -> handle"
+      ],
+      "final_state": "RESOLVED",
+      "pending": 0,
+      "snapshots": [
+        {
+          "state": "ESCALATED",
+          "pending": 1
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 1
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        }
+      ],
+      "denials": [],
+      "violations": [],
+      "messages": [
+        "resident_tip -> r04"
+      ],
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NEEDS_HELP",
+        "NEEDS_HELP->ESCALATED",
+        "ESCALATED->RESOLVED"
+      ],
+      "error": ""
+    },
+    {
+      "scenario": "s05_needs_high_risk_captain_handles_it",
+      "trial": 2,
+      "checks": {
+        "in_order": true,
+        "no_forbidden_tool": true,
+        "captain_decisions": false,
+        "final_state": true,
+        "resolved_means_nothing_pending": false,
+        "no_violations": true
+      },
+      "passed": false,
+      "tools": [
+        "find_nearest_volunteers",
+        "assign_volunteer",
+        "assign_volunteer",
+        "escalate_to_captain",
+        "escalate_to_captain",
+        "get_resident_memory",
+        "find_relief_centres",
+        "send_resident_tip",
+        "close_case",
+        "schedule_recheck",
+        "close_case",
+        "escalate_to_captain"
+      ],
+      "captain_decisions": 2,
+      "decision_names": [
+        "doorstep-approve-door-knock",
+        "doorstep-unmet-need"
+      ],
+      "answers": [
+        "dec-001 doorstep-approve-door-knock -> handle",
+        "dec-002 doorstep-unmet-need -> handle"
+      ],
+      "final_state": "RESOLVED",
+      "pending": 0,
+      "snapshots": [
+        {
+          "state": "ESCALATED",
+          "pending": 1
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 1
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        }
+      ],
+      "denials": [],
+      "violations": [],
+      "messages": [
+        "resident_tip -> r04"
+      ],
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NEEDS_HELP",
+        "NEEDS_HELP->ESCALATED",
+        "ESCALATED->RESOLVED"
+      ],
+      "error": ""
+    },
+    {
+      "scenario": "s06_needs_low_risk_volunteer_no_approval",
+      "trial": 1,
+      "checks": {
+        "in_order": true,
+        "no_forbidden_tool": true,
+        "captain_decisions": true,
+        "final_state": true,
+        "resolved_means_nothing_pending": false,
+        "no_violations": true
+      },
+      "passed": false,
+      "tools": [
+        "find_relief_centres",
+        "find_nearest_volunteers",
+        "send_resident_tip",
+        "assign_volunteer",
+        "close_case"
+      ],
+      "captain_decisions": 0,
+      "decision_names": [
+        "doorstep-volunteer-update"
+      ],
+      "answers": [
+        "dec-001 doorstep-volunteer-update -> ok"
+      ],
+      "final_state": "RESOLVED",
+      "pending": 0,
+      "snapshots": [
+        {
+          "state": "RESOLVED",
+          "pending": 1
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        }
+      ],
+      "denials": [],
+      "violations": [],
+      "messages": [
+        "resident_tip -> r19",
+        "volunteer_task -> vol-tom"
+      ],
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NEEDS_HELP",
+        "NEEDS_HELP->ASSIGNED",
+        "ASSIGNED->RESOLVED"
+      ],
+      "error": ""
+    },
+    {
+      "scenario": "s06_needs_low_risk_volunteer_no_approval",
+      "trial": 2,
+      "checks": {
+        "in_order": true,
+        "no_forbidden_tool": true,
+        "captain_decisions": true,
+        "final_state": true,
+        "resolved_means_nothing_pending": false,
+        "no_violations": true
+      },
+      "passed": false,
+      "tools": [
+        "find_relief_centres",
+        "find_nearest_volunteers",
+        "send_resident_tip",
+        "assign_volunteer",
+        "close_case"
+      ],
+      "captain_decisions": 0,
+      "decision_names": [
+        "doorstep-volunteer-update"
+      ],
+      "answers": [
+        "dec-001 doorstep-volunteer-update -> ok"
+      ],
+      "final_state": "RESOLVED",
+      "pending": 0,
+      "snapshots": [
+        {
+          "state": "RESOLVED",
+          "pending": 1
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        }
+      ],
+      "denials": [],
+      "violations": [],
+      "messages": [
+        "resident_tip -> r19",
+        "volunteer_task -> vol-tom"
+      ],
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NEEDS_HELP",
+        "NEEDS_HELP->ASSIGNED",
+        "ASSIGNED->RESOLVED"
+      ],
+      "error": ""
+    },
+    {
+      "scenario": "s07_ok_tip_recheck_close",
+      "trial": 1,
+      "checks": {
+        "in_order": true,
+        "no_forbidden_tool": true,
+        "captain_decisions": true,
+        "final_state": true,
+        "resolved_means_nothing_pending": true,
+        "no_violations": true
+      },
+      "passed": true,
+      "tools": [
+        "send_resident_tip",
+        "schedule_recheck",
+        "close_case"
+      ],
+      "captain_decisions": 0,
+      "decision_names": [],
+      "answers": [],
+      "final_state": "RESOLVED",
+      "pending": 0,
+      "snapshots": [
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        }
+      ],
+      "denials": [],
+      "violations": [],
+      "messages": [
+        "resident_tip -> r06"
+      ],
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ],
+      "error": ""
+    },
+    {
+      "scenario": "s07_ok_tip_recheck_close",
+      "trial": 2,
+      "checks": {
+        "in_order": true,
+        "no_forbidden_tool": true,
+        "captain_decisions": true,
+        "final_state": true,
+        "resolved_means_nothing_pending": true,
+        "no_violations": true
+      },
+      "passed": true,
+      "tools": [
+        "send_resident_tip",
+        "schedule_recheck",
+        "close_case"
+      ],
+      "captain_decisions": 0,
+      "decision_names": [],
+      "answers": [],
+      "final_state": "RESOLVED",
+      "pending": 0,
+      "snapshots": [
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        }
+      ],
+      "denials": [],
+      "violations": [],
+      "messages": [
+        "resident_tip -> r06"
+      ],
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ],
+      "error": ""
+    },
+    {
+      "scenario": "s08_ok_spanish",
+      "trial": 1,
+      "checks": {
+        "in_order": true,
+        "no_forbidden_tool": true,
+        "captain_decisions": true,
+        "final_state": true,
+        "resolved_means_nothing_pending": true,
+        "no_violations": true
+      },
+      "passed": true,
+      "tools": [
+        "send_resident_tip",
+        "schedule_recheck",
+        "close_case"
+      ],
+      "captain_decisions": 0,
+      "decision_names": [],
+      "answers": [],
+      "final_state": "RESOLVED",
+      "pending": 0,
+      "snapshots": [
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        }
+      ],
+      "denials": [],
+      "violations": [],
+      "messages": [
+        "resident_tip -> r07"
+      ],
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ],
+      "error": ""
+    },
+    {
+      "scenario": "s08_ok_spanish",
+      "trial": 2,
+      "checks": {
+        "in_order": true,
+        "no_forbidden_tool": true,
+        "captain_decisions": true,
+        "final_state": true,
+        "resolved_means_nothing_pending": true,
+        "no_violations": true
+      },
+      "passed": true,
+      "tools": [
+        "send_resident_tip",
+        "schedule_recheck",
+        "close_case"
+      ],
+      "captain_decisions": 0,
+      "decision_names": [],
+      "answers": [],
+      "final_state": "RESOLVED",
+      "pending": 0,
+      "snapshots": [
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        }
+      ],
+      "denials": [],
+      "violations": [],
+      "messages": [
+        "resident_tip -> r07"
+      ],
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->OK",
+        "OK->RESOLVED"
+      ],
+      "error": ""
+    },
+    {
+      "scenario": "s09_no_answer_three_times_family",
+      "trial": 1,
+      "checks": {
+        "first_tool": true,
+        "no_forbidden_tool": true,
+        "captain_decisions": true,
+        "decision_name": true,
+        "final_state": true,
+        "resolved_means_nothing_pending": true,
+        "no_violations": true
+      },
+      "passed": true,
+      "tools": [
+        "escalate_to_captain",
+        "escalate_to_captain",
+        "notify_family",
+        "close_case"
+      ],
+      "captain_decisions": 1,
+      "decision_names": [
+        "doorstep-high-risk-no-answer"
+      ],
+      "answers": [
+        "dec-001 doorstep-high-risk-no-answer -> notify_family"
+      ],
+      "final_state": "RESOLVED",
+      "pending": 0,
+      "snapshots": [
+        {
+          "state": "ESCALATED",
+          "pending": 1
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        }
+      ],
+      "denials": [],
+      "violations": [],
+      "messages": [
+        "family_notice -> family:contact:r05-niece"
+      ],
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NO_ANSWER",
+        "NO_ANSWER->QUEUED",
+        "QUEUED->CALLING",
+        "CALLING->NO_ANSWER",
+        "NO_ANSWER->QUEUED",
+        "QUEUED->CALLING",
+        "CALLING->NO_ANSWER",
+        "NO_ANSWER->ESCALATED",
+        "ESCALATED->RESOLVED"
+      ],
+      "error": ""
+    },
+    {
+      "scenario": "s09_no_answer_three_times_family",
+      "trial": 2,
+      "checks": {
+        "first_tool": true,
+        "no_forbidden_tool": true,
+        "captain_decisions": true,
+        "decision_name": true,
+        "final_state": true,
+        "resolved_means_nothing_pending": true,
+        "no_violations": true
+      },
+      "passed": true,
+      "tools": [
+        "escalate_to_captain",
+        "escalate_to_captain",
+        "notify_family",
+        "close_case"
+      ],
+      "captain_decisions": 1,
+      "decision_names": [
+        "doorstep-high-risk-no-answer"
+      ],
+      "answers": [
+        "dec-001 doorstep-high-risk-no-answer -> notify_family"
+      ],
+      "final_state": "RESOLVED",
+      "pending": 0,
+      "snapshots": [
+        {
+          "state": "ESCALATED",
+          "pending": 1
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        }
+      ],
+      "denials": [],
+      "violations": [],
+      "messages": [
+        "family_notice -> family:contact:r05-niece"
+      ],
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NO_ANSWER",
+        "NO_ANSWER->QUEUED",
+        "QUEUED->CALLING",
+        "CALLING->NO_ANSWER",
+        "NO_ANSWER->QUEUED",
+        "QUEUED->CALLING",
+        "CALLING->NO_ANSWER",
+        "NO_ANSWER->ESCALATED",
+        "ESCALATED->RESOLVED"
+      ],
+      "error": ""
+    },
+    {
+      "scenario": "s10_unclear_three_times_not_an_unmet_need",
+      "trial": 1,
+      "checks": {
+        "first_tool": true,
+        "no_forbidden_tool": true,
+        "captain_decisions": true,
+        "decision_name_not": false,
+        "final_state": true,
+        "resolved_means_nothing_pending": true,
+        "no_violations": true
+      },
+      "passed": false,
+      "tools": [
+        "escalate_to_captain",
+        "escalate_to_captain",
+        "close_case"
+      ],
+      "captain_decisions": 1,
+      "decision_names": [
+        "doorstep-unmet-need"
+      ],
+      "answers": [
+        "dec-001 doorstep-unmet-need -> handle"
+      ],
+      "final_state": "RESOLVED",
+      "pending": 0,
+      "snapshots": [
+        {
+          "state": "ESCALATED",
+          "pending": 1
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        }
+      ],
+      "denials": [],
+      "violations": [],
+      "messages": [],
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->UNCLEAR",
+        "UNCLEAR->QUEUED",
+        "QUEUED->CALLING",
+        "CALLING->UNCLEAR",
+        "UNCLEAR->QUEUED",
+        "QUEUED->CALLING",
+        "CALLING->UNCLEAR",
+        "UNCLEAR->ESCALATED",
+        "ESCALATED->RESOLVED"
+      ],
+      "error": ""
+    },
+    {
+      "scenario": "s10_unclear_three_times_not_an_unmet_need",
+      "trial": 2,
+      "checks": {
+        "first_tool": true,
+        "no_forbidden_tool": true,
+        "captain_decisions": true,
+        "decision_name_not": false,
+        "final_state": true,
+        "resolved_means_nothing_pending": true,
+        "no_violations": true
+      },
+      "passed": false,
+      "tools": [
+        "escalate_to_captain",
+        "escalate_to_captain",
+        "close_case"
+      ],
+      "captain_decisions": 1,
+      "decision_names": [
+        "doorstep-unmet-need"
+      ],
+      "answers": [
+        "dec-001 doorstep-unmet-need -> handle"
+      ],
+      "final_state": "RESOLVED",
+      "pending": 0,
+      "snapshots": [
+        {
+          "state": "ESCALATED",
+          "pending": 1
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        }
+      ],
+      "denials": [],
+      "violations": [],
+      "messages": [],
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->UNCLEAR",
+        "UNCLEAR->QUEUED",
+        "QUEUED->CALLING",
+        "CALLING->UNCLEAR",
+        "UNCLEAR->QUEUED",
+        "QUEUED->CALLING",
+        "CALLING->UNCLEAR",
+        "UNCLEAR->ESCALATED",
+        "ESCALATED->RESOLVED"
+      ],
+      "error": ""
+    },
+    {
+      "scenario": "s11_needs_nobody_available_unmet_need",
+      "trial": 1,
+      "checks": {
+        "in_order": true,
+        "no_forbidden_tool": true,
+        "captain_decisions": true,
+        "decision_name": true,
+        "final_state": true,
+        "resolved_means_nothing_pending": true,
+        "no_violations": true
+      },
+      "passed": true,
+      "tools": [
+        "find_relief_centres",
+        "find_nearest_volunteers",
+        "send_resident_tip",
+        "escalate_to_captain",
+        "escalate_to_captain",
+        "close_case"
+      ],
+      "captain_decisions": 1,
+      "decision_names": [
+        "doorstep-unmet-need"
+      ],
+      "answers": [
+        "dec-001 doorstep-unmet-need -> handle"
+      ],
+      "final_state": "RESOLVED",
+      "pending": 0,
+      "snapshots": [
+        {
+          "state": "ESCALATED",
+          "pending": 1
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        }
+      ],
+      "denials": [],
+      "violations": [],
+      "messages": [
+        "resident_tip -> r17"
+      ],
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NEEDS_HELP",
+        "NEEDS_HELP->ESCALATED",
+        "ESCALATED->RESOLVED"
+      ],
+      "error": ""
+    },
+    {
+      "scenario": "s11_needs_nobody_available_unmet_need",
+      "trial": 2,
+      "checks": {
+        "in_order": true,
+        "no_forbidden_tool": true,
+        "captain_decisions": true,
+        "decision_name": true,
+        "final_state": true,
+        "resolved_means_nothing_pending": true,
+        "no_violations": true
+      },
+      "passed": true,
+      "tools": [
+        "find_relief_centres",
+        "find_nearest_volunteers",
+        "send_resident_tip",
+        "escalate_to_captain",
+        "escalate_to_captain",
+        "close_case"
+      ],
+      "captain_decisions": 1,
+      "decision_names": [
+        "doorstep-unmet-need"
+      ],
+      "answers": [
+        "dec-001 doorstep-unmet-need -> handle"
+      ],
+      "final_state": "RESOLVED",
+      "pending": 0,
+      "snapshots": [
+        {
+          "state": "ESCALATED",
+          "pending": 1
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        }
+      ],
+      "denials": [],
+      "violations": [],
+      "messages": [
+        "resident_tip -> r17"
+      ],
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NEEDS_HELP",
+        "NEEDS_HELP->ESCALATED",
+        "ESCALATED->RESOLVED"
+      ],
+      "error": ""
+    },
+    {
+      "scenario": "s12_needs_company_no_sharing_consent",
+      "trial": 1,
+      "checks": {
+        "in_order": true,
+        "no_forbidden_tool": true,
+        "captain_decisions": true,
+        "final_state": true,
+        "resolved_means_nothing_pending": false,
+        "no_violations": false
+      },
+      "passed": false,
+      "tools": [
+        "find_nearest_volunteers",
+        "assign_volunteer",
+        "close_case"
+      ],
+      "captain_decisions": 0,
+      "decision_names": [
+        "doorstep-volunteer-update"
+      ],
+      "answers": [
+        "dec-001 doorstep-volunteer-update -> ok"
+      ],
+      "final_state": "RESOLVED",
+      "pending": 0,
+      "snapshots": [
+        {
+          "state": "RESOLVED",
+          "pending": 1
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        }
+      ],
+      "denials": [],
+      "violations": [
+        "volunteer brief named r46 without sharing consent"
+      ],
+      "messages": [
+        "volunteer_task -> vol-tom"
+      ],
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NEEDS_HELP",
+        "NEEDS_HELP->ASSIGNED",
+        "ASSIGNED->RESOLVED"
+      ],
+      "error": ""
+    },
+    {
+      "scenario": "s12_needs_company_no_sharing_consent",
+      "trial": 2,
+      "checks": {
+        "in_order": true,
+        "no_forbidden_tool": true,
+        "captain_decisions": true,
+        "final_state": true,
+        "resolved_means_nothing_pending": false,
+        "no_violations": false
+      },
+      "passed": false,
+      "tools": [
+        "find_nearest_volunteers",
+        "assign_volunteer",
+        "close_case"
+      ],
+      "captain_decisions": 0,
+      "decision_names": [
+        "doorstep-volunteer-update"
+      ],
+      "answers": [
+        "dec-001 doorstep-volunteer-update -> ok"
+      ],
+      "final_state": "RESOLVED",
+      "pending": 0,
+      "snapshots": [
+        {
+          "state": "RESOLVED",
+          "pending": 1
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        },
+        {
+          "state": "RESOLVED",
+          "pending": 0
+        }
+      ],
+      "denials": [],
+      "violations": [
+        "volunteer brief named r46 without sharing consent"
+      ],
+      "messages": [
+        "volunteer_task -> vol-tom"
+      ],
+      "history": [
+        "QUEUED->CALLING",
+        "CALLING->NEEDS_HELP",
+        "NEEDS_HELP->ASSIGNED",
+        "ASSIGNED->RESOLVED"
+      ],
+      "error": ""
+    }
+  ],
+  "wall_seconds": 15.0,
+  "cost_usd": 0.0986,
+  "tokens": {
+    "us.amazon.nova-2-lite-v1:0": {
+      "input_tokens": 260596,
+      "output_tokens": 4575,
+      "usd": 0.0986
+    }
+  }
+}

@@ -1,0 +1,21 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p15_clifford_ok_grumpy
+resident_id: r15
+display_name: Clifford Schulz
+language: en
+behaviour: answers
+traits:
+  age: 63
+  lives_alone: true
+  style: grumpy, thinks the call is a waste of time
+  home: apartment with a window AC that works
+context: Clifford is fine and annoyed to be called. His window unit works, he has water.
+goal: 'Grumble but answer: he feels fine, the AC works, he has water and his pills, he does not want anyone
+  coming round.'
+max_turns: 6
+ground_truth:
+  status: OK
+  red_flags: []
+  needs: []
+  hidden: false
+fictional: true

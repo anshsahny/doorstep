@@ -1,0 +1,21 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p31_elmer_urgent_fainted
+resident_id: r31
+display_name: Elmer Andersson
+language: en
+behaviour: answers
+traits:
+  age: 73
+  lives_alone: false
+  style: shaken
+  home: house, no AC
+context: Elmer fainted in the kitchen an hour ago and still feels dizzy. His wife is at work.
+goal: When asked how he feels, say he passed out in the kitchen earlier and is still dizzy.
+max_turns: 6
+ground_truth:
+  status: URGENT
+  red_flags:
+  - dizziness_fainting
+  needs: []
+  hidden: false
+fictional: true

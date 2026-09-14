@@ -1,0 +1,24 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p32_lloyd_urgent_hidden_foggy
+resident_id: r32
+display_name: Lloyd Dunn
+language: en
+behaviour: answers
+traits:
+  age: 67
+  lives_alone: false
+  style: jokey, deflects
+  home: apartment, no AC, wife away visiting family
+context: 'Lloyd has been foggy all afternoon: he put the milk in the oven, and he could not work out whether
+  it is morning or evening. He jokes about it and never says ''confused''. He only mentions it when asked
+  directly how he is feeling.'
+goal: Joke around. When asked how he's feeling, say 'fine, bit foggy, I put the milk in the oven and I
+  honestly couldn't tell you if it's morning or evening, ha.' Otherwise fine.
+max_turns: 6
+ground_truth:
+  status: URGENT
+  red_flags:
+  - confusion
+  needs: []
+  hidden: true
+fictional: true

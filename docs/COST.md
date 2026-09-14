@@ -24,6 +24,12 @@ actual cost. A budget on **net** cost is the one that would mean real money.
 | Twilio (`doorstep` subaccount) | about $1.29 | one US local number (about $1.15/month) + two 12 s smoke calls (about $0.014 each, billed per minute) |
 | ngrok | $0.00 | free plan |
 
+## Phase 6 evals (2026-09-13)
+
+About **$2.40** of Bedrock tokens (metered by `evals/common.py`): suite 1 three full runs of 60
+check-ins (~$0.45 each), suites 2 and 3 about $0.10 and $0.05 a run, the 48-resident backtest
+$0.56, smoke runs. Re-scoring from the cache and `make evals ARGS=--report` cost $0.
+
 ## Measured rates (Cost Explorer, us-east-1, 2026-09-12)
 
 Cost Explorer reports Bedrock `UsageQuantity` in **thousands of tokens** — Nova Micro's implied

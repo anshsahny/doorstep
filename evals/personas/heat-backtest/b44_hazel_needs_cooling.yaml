@@ -1,0 +1,21 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: b44_hazel_needs_cooling
+resident_id: r44
+display_name: Hazel Sato
+language: en
+behaviour: answers
+traits:
+  age: 68
+  lives_alone: true
+  style: tired
+  home: apartment, no AC, hot
+context: Hazel feels okay but the apartment is hot and she has no fan. She has water.
+goal: Say she is okay but it is hot and she has no fan or AC; somewhere cool would help.
+max_turns: 6
+ground_truth:
+  status: NEEDS_HELP
+  red_flags: []
+  needs:
+  - cooling
+  hidden: false
+fictional: true

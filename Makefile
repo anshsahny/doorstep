@@ -18,12 +18,13 @@ PY := $(UV) run python
 help: ## list targets
 	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-14s %s\n", $$1, $$2}'
 
-setup: ## create venv (Python 3.12), install all deps, install pre-commit hooks, install Node dev tools
+setup: ## create venv (Python 3.12), install all deps, install pre-commit hooks, install Node dev tools and the dashboard's packages
 	$(UV) python install 3.12
 	$(UV) sync --all-groups
 	$(UV) run pre-commit install
 	$(MAKE) node-check
 	npm install
+	cd web && npm ci
 
 node-check: ## fail unless Node 22 is first on PATH
 	@v=$$(node --version); case $$v in v22.*) echo "node $$v OK";; *) echo "Expected Node 22, found $$v. See CLAUDE.md (Node version)."; exit 1;; esac
@@ -65,7 +66,9 @@ telegram-drill: ## same drill, but decisions go to the real roster chats and wai
 	$(PY) scripts/local_drill.py --telegram --no-clear $(ARGS)
 
 # --- Phase 3: cloud (AWS profile doorstep, us-east-1) ---
-CLOUD := AWS_PROFILE=doorstep AWS_REGION=us-east-1 CDK_DEFAULT_REGION=us-east-1
+# Override with `make deploy AWS_PROFILE=yours` if your CLI profile is not called doorstep.
+AWS_PROFILE ?= doorstep
+CLOUD := AWS_PROFILE=$(AWS_PROFILE) AWS_REGION=us-east-1 CDK_DEFAULT_REGION=us-east-1
 
 secrets-push: ## copy secrets from .env into SSM SecureStrings (ARGS=--generate-missing)
 	$(CLOUD) $(PY) scripts/secrets_push.py $(ARGS)
@@ -130,8 +133,8 @@ phone-call: ## REAL call to the operator's own phone (ARGS=--telegram)
 phone-evidence: ## what an incident recorded for a phone call (ARGS=<incident id>)
 	$(CLOUD) $(PY) scripts/voice/voice.py evidence $(ARGS)
 
-evals: ## Phase 6: run eval suites, write evals/REPORT.md
-	@echo "make evals arrives in Phase 6"; exit 1
+evals: ## run the four eval suites (Bedrock, ~$2) and write evals/REPORT.md (ARGS="--suite checkin --label before", ARGS=--report for $0)
+	$(PY) -m evals.run $(ARGS)
 
 # --- Phase 5: dashboard ---
 
@@ -143,7 +146,7 @@ web: node-check web-export ## run the dashboard on http://localhost:5173 against
 	cd web && npm install && npx vite --port 5173 --strictPort
 
 web-test: node-check ## typecheck and unit-test the dashboard
-	cd web && npx tsc --noEmit && npx vitest run
+	cd web && (test -d node_modules || npm ci) && npx tsc --noEmit && npx vitest run
 
 web-deploy: node-check web-export ## build the dashboard and publish it to S3 + CloudFront
 	cd web && npm install && npx tsc --noEmit && npx vite build

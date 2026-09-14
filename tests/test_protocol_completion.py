@@ -24,7 +24,14 @@ def _attempt(answers: dict[str, str], resident_says: str = "I'm fine, thanks") -
         channel="simulated",
         answered=True,
         answers=answers,
-        transcript=[ConversationTurn(speaker="resident", text=resident_says)],
+        # Since Phase 6 a recorded answer also needs the question asked in the transcript.
+        transcript=[
+            ConversationTurn(
+                speaker="agent",
+                text="How are you feeling right now?" if "feeling" in answers else "Got water?",
+            ),
+            ConversationTurn(speaker="resident", text=resident_says),
+        ],
     )
 
 
@@ -37,7 +44,9 @@ def test_the_shared_feeling_question_is_the_required_one() -> None:
 def test_unanswered_required_spots_missing_and_blank_answers(ctx: RunContext) -> None:
     assert unanswered_required(ctx, _attempt({"feeling": "a bit tired"})) == []
     assert unanswered_required(ctx, _attempt({"supplies": "has water"})) == ["feeling"]
-    assert unanswered_required(ctx, _attempt({"feeling": "   "})) == ["feeling"]
+    blank = _attempt({"feeling": "   "})
+    blank.transcript[0].text = "Got water?"  # a blank record and the question never asked
+    assert unanswered_required(ctx, blank) == ["feeling"]
 
 
 def test_skipped_question_turns_ok_into_unclear(ctx: RunContext, monkeypatch) -> None:

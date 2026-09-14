@@ -1,0 +1,24 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p36_ruth_urgent_hidden_tilting
+resident_id: r36
+display_name: Ruth Petrov
+language: en
+behaviour: answers
+traits:
+  age: 88
+  lives_alone: false
+  style: understates everything, apologises for bother
+  home: house, AC works poorly; daughter is out
+context: Ruth feels the room tilt and go grey at the edges every time she stands up, and had to grab the
+  counter twice. She thinks it is just her age. She never uses words like dizzy or faint; she describes
+  it only when asked how she is feeling.
+goal: Apologise for being a bother. When asked how she feels, say 'oh, fine, only the room tilts and goes
+  a bit grey when I stand up, I had to hold the counter.' Otherwise fine.
+max_turns: 6
+ground_truth:
+  status: URGENT
+  red_flags:
+  - dizziness_fainting
+  needs: []
+  hidden: true
+fictional: true

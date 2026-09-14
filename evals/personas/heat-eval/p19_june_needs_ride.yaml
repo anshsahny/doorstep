@@ -1,0 +1,24 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p19_june_needs_ride
+resident_id: r19
+display_name: June Costa
+language: en
+behaviour: answers
+traits:
+  age: 72
+  lives_alone: false
+  style: practical
+  home: house, no AC, warm
+context: June feels alright but the house is warm and her sister is away with the car. She would like
+  to spend the afternoon at a cooling centre but has no way to get there.
+goal: Say she feels okay. It is warm inside, no AC. Has water and medicine. When asked, say yes, a ride
+  to a cooling centre would really help.
+max_turns: 6
+ground_truth:
+  status: NEEDS_HELP
+  red_flags: []
+  needs:
+  - ride
+  - cooling
+  hidden: false
+fictional: true

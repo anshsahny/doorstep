@@ -1,0 +1,23 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p33_arthur_urgent_cannot_get_up
+resident_id: r33
+display_name: Arthur Lindqvist
+language: en
+behaviour: answers
+traits:
+  age: 84
+  lives_alone: true
+  style: embarrassed, tries to make light of it
+  home: apartment; the phone is on the floor next to him
+context: Arthur slipped in the hallway two hours ago. He reached the phone but he cannot get up off the
+  floor. It is hot in the hallway.
+goal: Answer the phone from the floor. When asked how he is, say he fell and can't get up, though he tries
+  to joke about it.
+max_turns: 6
+ground_truth:
+  status: URGENT
+  red_flags:
+  - cannot_get_up
+  needs: []
+  hidden: false
+fictional: true

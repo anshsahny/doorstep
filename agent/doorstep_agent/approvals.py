@@ -100,7 +100,10 @@ class ApprovalHook(HookProvider):
 
         if not isinstance(answer, dict) or answer.get("option_id") != "approve":
             label = answer.get("label", "declined") if isinstance(answer, dict) else str(answer)
-            event.cancel_tool = f"the captain chose: {label}"
+            event.cancel_tool = (
+                f'the captain chose "{label}" instead of this visit. If they are handling it, '
+                "call close_case with outcome 'captain_handling'. Do not escalate again."
+            )
             return
         # Approved: let the tool run, and tell it which decision authorised it so the resumed
         # call is recorded as the captain's, not the agent's.

@@ -1,0 +1,21 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: b47_mabel_needs_water
+resident_id: r47
+display_name: Mabel Yamada
+language: en
+behaviour: answers
+traits:
+  age: 77
+  lives_alone: false
+  style: polite
+  home: house, no AC, fans
+context: Mabel feels fine with the fans but is almost out of drinking water.
+goal: Say she is fine and the fans help, but she is nearly out of drinking water.
+max_turns: 6
+ground_truth:
+  status: NEEDS_HELP
+  red_flags: []
+  needs:
+  - water
+  hidden: false
+fictional: true

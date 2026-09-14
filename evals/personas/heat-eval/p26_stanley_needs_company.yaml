@@ -1,0 +1,23 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p26_stanley_needs_company
+resident_id: r26
+display_name: Stanley Gallagher
+language: en
+behaviour: answers
+traits:
+  age: 78
+  lives_alone: true
+  style: quiet, a bit lonely, grateful someone called
+  home: apartment, no AC, fan works
+context: Stanley is physically fine, the fan keeps him comfortable, and he has water. He has not spoken
+  to anyone in four days since his neighbour moved, and he would love a visit.
+goal: Say he feels fine and the fan helps and he has water. When asked about a visit, say he has not talked
+  to anyone in days and a visit from a neighbour would mean a lot.
+max_turns: 6
+ground_truth:
+  status: NEEDS_HELP
+  red_flags: []
+  needs:
+  - company
+  hidden: false
+fictional: true

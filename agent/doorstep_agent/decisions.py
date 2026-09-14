@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Literal
 
+from .messages import VOLUNTEER_UPDATE
 from .models import CaseState, Decision, DecisionOption, ResidentCase, Volunteer
 from .runtime import RunContext, resolve_ref
 from .state_machine import transition
@@ -427,8 +428,32 @@ def _apply_directly(ctx: RunContext, decision: Decision, option: DecisionOption,
             resident_id=resident_id,
             reason=f"{option.label} ({decision.id})",
         )
+        if decision.name == VOLUNTEER_UPDATE and case.state == CaseState.ASSIGNED:
+            _follow_up_task(ctx, decision)
         return f"{resident_id}: {option.label}"
     return "recorded"
+
+
+def _follow_up_task(ctx: RunContext, decision: Decision) -> Decision:
+    """After "On my way", the volunteer still owes the reply that closes the case.
+
+    Before Phase 6 the model closed the case as soon as it assigned a volunteer, so nobody
+    noticed that answering "On my way" used up the only task and left no way to say "They're OK".
+    """
+    follow = upsert_decision(
+        ctx,
+        tool_use_id=f"followup:{decision.id}",
+        resident_id=decision.resident_id,
+        name=decision.name,
+        reason=decision.reason,
+        options=[o for o in decision.options if o.action != "acknowledge"],
+        audience=decision.audience,
+    )
+    if follow.status == "draft":
+        follow.status = "pending"
+        follow.expires_at = expires_at(ctx)
+        ctx.store.save_decision(follow)
+    return follow
 
 
 def _send_the_volunteer(

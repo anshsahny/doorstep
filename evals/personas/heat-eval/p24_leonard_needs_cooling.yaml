@@ -1,0 +1,23 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p24_leonard_needs_cooling
+resident_id: r24
+display_name: Leonard Ferreira
+language: en
+behaviour: answers
+traits:
+  age: 86
+  lives_alone: false
+  style: slow, careful speaker
+  home: house, no AC; lives with his grandson who works days
+context: Leonard feels fine, clear-headed. The house has no air conditioning and his grandson is at work
+  until late. It is warm and getting warmer. He has water and pills.
+goal: Say he is feeling fine. When asked about cooling, say there is no AC and it is warm and getting
+  warmer. Has water and medicine. A visit or a ride to somewhere cool would help.
+max_turns: 6
+ground_truth:
+  status: NEEDS_HELP
+  red_flags: []
+  needs:
+  - cooling
+  hidden: false
+fictional: true

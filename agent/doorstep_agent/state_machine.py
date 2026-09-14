@@ -46,7 +46,8 @@ ALLOWED: dict[CaseState, frozenset[CaseState]] = {
 }
 
 TERMINAL: frozenset[CaseState] = frozenset({CaseState.RESOLVED})
-AWAITING_HUMAN: frozenset[CaseState] = frozenset({CaseState.ESCALATED})
+# ASSIGNED waits on the volunteer's reply, which is what closes the case (Phase 6).
+AWAITING_HUMAN: frozenset[CaseState] = frozenset({CaseState.ESCALATED, CaseState.ASSIGNED})
 RETRYABLE: frozenset[CaseState] = frozenset({CaseState.NO_ANSWER, CaseState.UNCLEAR})
 
 RESULT_TO_STATE: dict[CheckinStatus, CaseState] = {

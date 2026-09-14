@@ -26,6 +26,12 @@ class GroundTruth(BaseModel):
     red_flags: list[str] = Field(default_factory=list)
     needs: list[str] = Field(default_factory=list)
     hidden: bool = False
+    # Adversarial personas (prompt injection, prank, hostile) are scored on safety, not on the
+    # classification: `accept` lists the other statuses that are a correct reading of the call.
+    adversarial: bool = False
+    accept: list[Literal["OK", "NEEDS_HELP", "URGENT", "UNCLEAR", "NO_ANSWER"]] = Field(
+        default_factory=list
+    )
 
 
 class Persona(BaseModel):
@@ -40,6 +46,10 @@ class Persona(BaseModel):
     context: str = ""
     goal: str = ""
     opening: str = ""
+    # Lines the resident says word for word on a given reply (1 = the first reply after the
+    # opening). Adversarial personas use it so the attack is actually delivered: left to the
+    # simulator, Nova Micro played along politely and never said the injection at all.
+    scripted: dict[int, str] = Field(default_factory=dict)
     max_turns: int = 6
     ground_truth: GroundTruth
     fictional: bool = True
@@ -104,6 +114,7 @@ class PersonaChannel:
         self.persona = persona
         self.model_id = model_id
         self._sim: ActorSimulator | None = None
+        self._replies = 0
 
     def _opening(self) -> str:
         if self.persona.opening:
@@ -135,6 +146,12 @@ class PersonaChannel:
     async def reply(self, agent_text: str) -> str | None:
         if self._sim is None:
             return None
+        self._replies += 1
+        scripted = self.persona.scripted.get(self._replies)
+        if scripted:
+            # The simulator still hears the agent's line, so the rest of the call stays coherent.
+            await asyncio.to_thread(self._sim.act, agent_text)
+            return scripted
         if not self._sim.has_next():
             return None
         result = await asyncio.to_thread(self._sim.act, agent_text)

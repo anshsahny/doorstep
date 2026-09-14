@@ -214,6 +214,20 @@ def test_the_call_queue_never_retries_a_real_call(template) -> None:
     assert any("sqs:SendMessage" in as_list(st["Action"]) for st in runtime)
 
 
+def test_a_failed_real_call_raises_an_alarm(template) -> None:
+    """The DLQ never retries a call, so a message there must reach a human (Phase 6 hardening)."""
+    alarms = resources(template, "AWS::CloudWatch::Alarm")
+    by_name = {a["Properties"]["AlarmName"]: a["Properties"] for a in alarms.values()}
+    dlq = by_name["doorstep-checkin-jobs-dlq-not-empty"]
+    assert dlq["MetricName"] == "ApproximateNumberOfMessagesVisible" and dlq["Threshold"] == 1
+    assert by_name["doorstep-checkin-worker-errors"]["MetricName"] == "Errors"
+    assert by_name["doorstep-checkin-call-failed"]["MetricName"] == "FailedCalls"
+    (flt,) = resources(template, "AWS::Logs::MetricFilter").values()
+    assert flt["Properties"]["LogGroupName"] == "/aws/lambda/doorstep-checkin-worker"
+    assert "call failed" in flt["Properties"]["FilterPattern"]
+    assert all(a["AlarmActions"] for a in by_name.values())
+
+
 # --- Phase 5: the dashboard -----------------------------------------------------------------
 
 

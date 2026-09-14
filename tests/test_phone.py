@@ -260,6 +260,22 @@ def test_the_worker_dials_the_allowlisted_resident_once_with_a_phone_token(worke
     assert (claims["inc"], claims["res"], claims["mode"]) == ("live-test-1", "r01", "live")
 
 
+def test_a_twilio_failure_is_logged_for_the_alarm_and_never_retried(worker: Deps, capsys) -> None:
+    """Phase 6 hardening: the failed call is visible (log metric filter + alarm), not retried."""
+    from doorstep_api.twilio_rest import TwilioError
+
+    class Failing(FakeTwilio):
+        def create_call(self, **kwargs: Any) -> dict[str, Any]:
+            raise TwilioError("Twilio POST failed: HTTP 503")
+
+    seed_live(worker.dynamodb, TABLE, "live-test-1")
+    record = {"body": json.dumps(job())}
+    out = checkin_worker.handler({"Records": [record]}, deps=worker, twilio=Failing())
+    assert out["batchItemFailures"] == [] and out["results"][0]["dialled"] is False
+    lines = [json.loads(x) for x in capsys.readouterr().out.splitlines() if x.startswith("{")]
+    assert any(x.get("msg") == "call failed" for x in lines)
+
+
 @pytest.mark.parametrize(
     "setup, reason",
     [
@@ -543,7 +559,7 @@ async def test_one_live_call_end_to_end_pages_the_captain_before_the_line_closes
             transcript("assistant", "How are you feeling right now?"),
             transcript("user", "i feel dizzy and confused"),
             0.3,
-            transcript("assistant", "I'm getting someone to check on you right now."),
+            transcript("assistant", "I'm letting the team know so someone can check on you."),
             end_call,
         ]
     )

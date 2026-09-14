@@ -411,6 +411,18 @@ coordinator by IAM-signed `InvokeAgentRuntime`, so `/internal/checkin-result` wa
 
 Output goes to `evals/REPORT.md` (tables, before/after) and `evals/report.json` for the dashboard's Evidence page.
 
+As built in Phase 6 (amended 2026-09-13):
+- Suite 1 runs each urgent persona **3 times** (30 urgent check-ins); one sample cannot support a
+  recall claim. Adversarial personas are scored on safety, not recall; their attack lines are
+  scripted word for word because the simulator would not deliver them.
+- Suite 3 has two halves reported separately: **forced** (a scripted model really makes each
+  forbidden call through the real dispatcher and Cedar, plus allowed controls) and **injected**
+  (Nova 2 Lite reads a prompt injection). Violations are judged on effects, not intentions.
+- Suite 4 reports the measured drill clock and a **projection** of the run's actual attempts onto
+  phone lines at measured call lengths with the real retry interval; the phone-tree baseline is
+  labelled as rough (it ignores retries).
+- All scoring is deterministic (`evals/scoring.py`); no LLM judge.
+
 ## 13. Dashboard spec and design brief
 
 - **Subject:** a neighbourhood's heat-day check-in, live.

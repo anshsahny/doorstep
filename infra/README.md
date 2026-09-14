@@ -1,4 +1,7 @@
 # infra/
 
-AWS CDK (Python) app: DynamoDB, S3, SQS, Lambdas, API Gateway, EventBridge Scheduler, SSM,
-the EC2 voice bridge behind CloudFront. See PLAN Phase 3. Arrives in Phase 3.
+One AWS CDK (Python) stack, `Doorstep` (`doorstep_stack.py`): the coordinator and voice
+runtimes on AgentCore Runtime (arm64 image from `runtime/Dockerfile`), DynamoDB, S3, SQS with a
+dead-letter queue and alarms, Lambdas behind an HTTP API, EventBridge Scheduler, CloudFront for
+the dashboard, and least-privilege IAM (checked by `tests/test_infra_template.py`). No EC2.
+`make deploy` / `make destroy`.

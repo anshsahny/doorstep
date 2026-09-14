@@ -1,0 +1,22 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p23_teresa_ok_chatty_es
+resident_id: r23
+display_name: Teresa Herrera
+language: es
+behaviour: answers
+opening: ¡Hola! ¿Quién habla?
+traits:
+  age: 65
+  lives_alone: false
+  style: alegre, conversadora, responde en español
+  home: apartamento con aire acondicionado, vive con su esposo
+context: Teresa está muy bien. Tienen aire acondicionado, agua y comida. Agradece la llamada.
+goal: 'Responder en español con alegría: se siente bien, la casa está fresca, tiene todo, no necesita
+  nada.'
+max_turns: 6
+ground_truth:
+  status: OK
+  red_flags: []
+  needs: []
+  hidden: false
+fictional: true

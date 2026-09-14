@@ -1,5 +1,5 @@
 {
-  "_note": "Gate results from docs/PROGRESS.md. Update when a gate passes; evals arrive in Phase 6 (public/evals-report.json).",
+  "_note": "Gate results from docs/PROGRESS.md. Update when a gate passes. Eval results come from public/evals-report.json (make evals).",
   "gates": [
     {
       "phase": "1",

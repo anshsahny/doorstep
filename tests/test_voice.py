@@ -310,7 +310,7 @@ async def test_the_residents_own_words_page_the_captain_before_the_call_ends() -
             transcript("user", "confused"),
             0.2,
             after_page,
-            transcript("assistant", "I'm getting someone to check on you right now."),
+            transcript("assistant", "I'm letting the team know so someone can check on you."),
             end_call,
         ],
         line=line,

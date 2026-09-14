@@ -28,7 +28,7 @@ Optional, but scored:
 
 | Criterion | Evidence we provide |
 |---|---|
-| Technical implementation (also the tie-breaker) | Strands used deeply: a Graph pipeline, interrupts with session persistence, Cedar policies, the voice agent, structured output, hooks, and Evals. Deployed on AgentCore Runtime with Memory and Observability. A live demo. CI and tests. |
+| Technical implementation (also the tie-breaker) | Strands used deeply: a Graph pipeline, interrupts with session persistence, Cedar policies, the voice agent, structured output, hooks, and Evals. Deployed on AgentCore Runtime with Observability. A live demo. CI and tests. |
 | Design | A complete loop across a real phone call, Telegram and the dashboard. A judge sandbox. An accessible, purpose-built UI. The incident report. |
 | Potential impact | The coroner-backed problem; a specific user (the block captain); the measured backtest (time to full coverage vs. a phone tree); a clear buyer path. |
 | Creativity | An agent that phones people, triggered by the real world rather than a user. Minimal-disclosure briefs for volunteers. The "model proposes, policy decides" split. Multilingual voice. |
@@ -57,7 +57,7 @@ Framing: the same heat dome hit Portland, which is why the replay uses the real 
 
 **Inspiration.** In the 2021 heat dome, 619 people died in British Columbia alone. Almost all of them died at home, more than half of them alone. The warnings went out; what didn't happen, fast enough, was someone checking on them. Neighbourhood teams keep lists of the people most at risk, but a phone tree run by one volunteer on a hot afternoon doesn't scale.
 
-**What it does.** Doorstep is a Good Neighbor agent built with the **Strands Agents SDK**. It watches National Weather Service alerts for a volunteer group's area. Each hazard is a plug-in profile: extreme heat ships fully tested [and extreme cold is included]. When a warning hits, it:
+**What it does.** Doorstep is a Good Neighbor agent built with the **Strands Agents SDK**. It watches National Weather Service alerts for a volunteer group's area. Each hazard is a plug-in profile: extreme heat ships fully tested; extreme cold, smoke and power shutoffs are roadmap profiles, not built. When a warning hits, it:
 - ranks the group's opt-in list by risk (age, living alone, no AC);
 - phones every resident with a natural voice agent (Amazon Nova 2 Sonic), in their language;
 - classifies each check-in, sends cooling-centre info, and assigns volunteers for water or visits.
@@ -73,9 +73,9 @@ It interrupts the block captain only for the decisions a human must make: an urg
   - Cedar authorization on every tool call (allowlisted calls only, minimal disclosure, no agent-initiated emergency calls)
   - hooks for a full audit trail
   - a BidiAgent for voice
-- **Amazon Bedrock AgentCore:** Runtime hosts the coordinator; Memory keeps resident preferences ("hard of hearing — speak slowly"); Observability traces every run.
+- **Amazon Bedrock AgentCore:** Runtime hosts the coordinator and the browser voice agent; Observability traces every run. Resident preferences ("hard of hearing — speak slowly") come from the roster in DynamoDB; AgentCore Memory is roadmap.
 - **Models:** Nova 2 Lite (reasoning), Nova 2 Sonic (voice), Nova Micro (simulated residents for drills and evals).
-- **AWS:** Lambda, API Gateway, SQS, DynamoDB, EventBridge Scheduler, S3, CloudFront, EC2, CDK.
+- **AWS:** Lambda, API Gateway, SQS, DynamoDB, EventBridge Scheduler, S3, CloudFront, SSM, CDK. (The phone bridge runs on the operator's machine behind ngrok; it is not hosted.)
 - **Channels:** Twilio Media Streams (phone), Telegram (captain and volunteers), React dashboard.
 - **Evidence:** Strands Evals with 40 simulated residents, including hidden red flags and prompt-injection attempts. Red-flag recall [100%], policy violations [0].
 
@@ -88,10 +88,10 @@ It interrupts the block captain only for the decisions a human must make: an urg
 **What's next.**
 - Pilots with a senior building and a neighbourhood emergency team
 - Canadian alerts (Environment and Climate Change Canada)
-- More hazard profiles: [extreme cold, if not shipped,] smoke, and power shutoffs — each is a profile file, not a rebuild
+- More hazard profiles: extreme cold, smoke, and power shutoffs — each is a profile file, not a rebuild
 - Opt-in enrolment by phone
 
-**Built with:** strands-agents, amazon-bedrock, amazon-nova, bedrock-agentcore, aws-lambda, amazon-dynamodb, amazon-sqs, amazon-eventbridge, amazon-cloudfront, amazon-ec2, aws-cdk, cedar, twilio, telegram, python, react, typescript, tailwind, leaflet
+**Built with:** strands-agents, amazon-bedrock, amazon-nova, bedrock-agentcore, aws-lambda, amazon-dynamodb, amazon-sqs, amazon-eventbridge, amazon-cloudfront, aws-cdk, cedar, twilio, telegram, python, react, typescript, tailwind
 
 **Testing instructions (draft):**
 1. Open [live URL].
@@ -111,7 +111,7 @@ It interrupts the block captain only for the decisions a human must make: an urg
 | 0:30–1:10 | Stats on screen (sources cited on screen) | 619 deaths, 98% at home, 56% alone. Alerts went out; check-ins didn't. Who it's for: the volunteer captain with a list and a day job. |
 | 1:10–1:25 | Home page | What Doorstep does, in one sentence. |
 | 1:25–3:20 | Live demo | 1. Replay the 2021 Portland warning → activation with its reasoning. 2. Door grid fills; triage waves. 3. One Spanish call. 4. Urgent flag → Telegram decision → captain taps "Send Tom" → volunteer taps "They're OK". 5. Policy panel: denial of a group broadcast with personal details; agent rewrites. 6. Incident report: [N] minutes vs. ~3 hours, [k] human decisions. |
-| 3:20–4:10 | Architecture diagram, then code flashes; 10-second shot of `heat.yaml` next to `cold.yaml` (or the cold roadmap) | Strands Graph, interrupts + sessions, Cedar, BidiAgent on Nova 2 Sonic; AgentCore Runtime, Memory, Observability traces. "Every hazard is a profile: same agent, different questions and danger signs." |
+| 3:20–4:10 | Architecture diagram, then code flashes; 10-second shot of `heat.yaml` (cold, smoke, power shutoffs named as roadmap profiles) | Strands Graph, interrupts + sessions, Cedar, BidiAgent on Nova 2 Sonic; AgentCore Runtime, Observability traces. "Every hazard is a profile: same agent, different questions and danger signs." |
 | 4:10–4:30 | Evidence page | 40 simulated residents: red-flag recall, zero policy violations, injection attempts blocked. |
 | 4:30–4:50 | Closing | Why it matters, what's next (pilots, Canada), live link. |
 
@@ -165,9 +165,9 @@ Each post: 600–1,000 words, one diagram or screenshot, a link to the repo and 
 - **Users:** captain (Telegram + dashboard), volunteers (Telegram), residents (phone / browser), judges (dashboard sandbox)
 - **Strands agents box:** the Graph nodes, dispatcher, voice BidiAgent, and the agent loop (model → tools → reasoning → response), with Cedar sitting on the tool boundary
 - **AWS:**
-  - AgentCore Runtime, Memory, Observability
+  - AgentCore Runtime, Observability (Memory: roadmap, labelled as not built)
   - Bedrock with Nova 2 Lite, Nova 2 Sonic, Nova Micro
-  - Lambda, API Gateway, SQS, DynamoDB, EventBridge Scheduler, S3, CloudFront, EC2, SSM
+  - Lambda, API Gateway, SQS, DynamoDB, EventBridge Scheduler, S3, CloudFront, SSM (no EC2: the phone bridge runs locally)
 - **External:** NWS API, Twilio, Telegram
 - **Outputs:** calls, tasks, decisions, incident report
 

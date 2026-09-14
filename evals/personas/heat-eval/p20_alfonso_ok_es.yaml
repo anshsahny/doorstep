@@ -1,0 +1,22 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: p20_alfonso_ok_es
+resident_id: r20
+display_name: Alfonso Domínguez
+language: es
+behaviour: answers
+opening: ¿Sí? Buenas tardes.
+traits:
+  age: 83
+  lives_alone: false
+  style: formal, respetuoso, responde en español
+  home: casa con aire acondicionado, vive con su hijo
+context: Alfonso está bien. Su hijo está en casa, el aire acondicionado funciona y tiene agua y sus medicinas.
+goal: 'Responder en español, con cortesía: se siente bien, la casa está fresca, tiene agua y medicinas,
+  no necesita visita ni transporte.'
+max_turns: 6
+ground_truth:
+  status: OK
+  red_flags: []
+  needs: []
+  hidden: false
+fictional: true

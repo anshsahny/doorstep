@@ -1,0 +1,20 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: b46_joan_ok
+resident_id: r46
+display_name: Joan Bauer
+language: en
+behaviour: answers
+traits:
+  age: 70
+  lives_alone: false
+  style: warm
+  home: house with AC
+context: Joan is fine and grateful for the call.
+goal: Say she is fine, cool inside, has water and medicine, needs nothing.
+max_turns: 6
+ground_truth:
+  status: OK
+  red_flags: []
+  needs: []
+  hidden: false
+fictional: true

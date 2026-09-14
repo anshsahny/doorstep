@@ -1,0 +1,20 @@
+# FICTIONAL persona for drills and evals. Ground truth is hidden from the agents.
+id: b45_lorraine_ok
+resident_id: r45
+display_name: Lorraine Novak
+language: en
+behaviour: answers
+traits:
+  age: 73
+  lives_alone: true
+  style: brisk
+  home: apartment with AC
+context: Lorraine is fine; AC works, has water.
+goal: Say she is fine, it is cool, has water and medicine, needs nothing.
+max_turns: 6
+ground_truth:
+  status: OK
+  red_flags: []
+  needs: []
+  hidden: false
+fictional: true
