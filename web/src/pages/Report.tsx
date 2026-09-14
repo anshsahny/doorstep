@@ -67,7 +67,7 @@ export function Report() {
   const scale = Math.max(treeMinutes, doorstepMinutes, 1);
 
   return (
-    <div className="flex max-w-4xl flex-col gap-5">
+    <div className="flex w-full flex-col gap-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 tabIndex={-1} className="text-2xl font-bold">
           Incident report

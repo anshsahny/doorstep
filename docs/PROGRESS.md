@@ -1,6 +1,6 @@
 # Doorstep — progress log
 
-Current phase: **7 — Launch**: audit done, Devpost text final, link check done. Next: Ansh tags `v1.0`, records the video, publishes post 3, submits.
+Current phase: **7 — Launch**: video recorded; submission package ready (SUBMISSION §10). Next: Ansh tags `v1.0`, uploads the video, publishes posts 2 and 3, submits.
 Next gate: **Gate 7 (submitted)**
 Time now vs plan: Phase 0 ran Fri Sep 11 00:00–12:35 PDT (planned Thu evening). Phase 1 ran Fri
 17:45–21:20 PDT, about 3.5 h of its 5 h box. Phase 2 started Sat 08:30 PDT and was committed
@@ -37,6 +37,19 @@ before 11:27 PDT, when Phase 3 planning started: about 1.5 h ahead of the Sat 1 
 | 5 | Telegram ping + button | ✅ PASS 2026-09-11 | Bot `@doorstep_agent_bot`; captain chat ID from the `--whoami` step. Message with 3 inline buttons sent; the `I'm handling it` callback arrived 7.5 s later via long polling, was answered, and the message was edited. First run timed out at 120 s with no tap; second run passed. |
 
 ## Log (newest first)
+
+### 2026-09-14 about 00:40 PDT — video recorded; submission package ready
+- Video recorded and edited by Ansh from SUBMISSION §5 (script rewritten to match what shipped; code cards cut for time). No music.
+- Phone cold open: bridge + ngrok restarted; `make phone-preflight` fails "ngrok reaches the local bridge" from this Mac only (a local network filter blocks `*.ngrok-free.dev`; the same URL returns `{"ok":true}` from Ansh's phone on cellular). Real calls worked: e.g. `live-20260914-054123-be48`, `live-20260914-053944-91b2` (captain paged 21.4 s before hang-up).
+- Second Telegram account done: Tom (`vol-tom`) now maps to Ansh's iPad, set in `.env` and SSM `/doorstep/telegram/volunteer_chat_ids` (no deploy needed). Found on the way: the webhook's `allowed_updates` filter persists into long polling, so a `getUpdates` without `allowed_updates` silently drops text messages. Telegram take `drill-20260914-065148-ce60`: captain "Send Tom (0.4 km)" from the iPhone, Tom "They're OK" from the iPad 7 s later, both via the webhook; cloud-drill checks all PASS.
+- "Tom got two tasks": not a duplicate. Tapping "On my way" sends a follow-up message (They're OK / Need more help); one `volunteer_task` message was recorded.
+- Dashboard: Report, Evidence and Decisions now use the full content width (`w-full` instead of `max-w-3xl/4xl`); `make web-test` 9 passed; `make web-deploy` published it before the demo takes. Not yet on `main`.
+- §9 re-check: `make cap-test` 15/15 with friendly messages, kill switch restored `off` (one sandbox drill, ~$0.38). Judging-period counters: sandbox 13/120, voice 17/120. `make check` 398 passed, ruff clean.
+- SUBMISSION §4 wording: "98% died indoors" (verified figure) instead of "at home". §9 ticked; §10 added (YouTube title/description, Devpost field map, screenshot list). A local `DEVPOST-PASTE.md` with the passcode and the screenshots live outside the repo.
+- Rough edge seen: a model-written captain option labelled "911 call" on an urgent card (`drill-20260914-065148-ce60`, dec-001). Not fixed (main frozen); keep it off screen.
+- Testing instructions step 6 now names `drill-20260914-065148-ce60` for Captain mode (captain tokens are not tied to one incident, `api/doorstep_api/access.py`; incident items carry no TTL, so it stays viewable through judging). Not tested in a browser: that needs typing the passcode.
+- Blog post 2 published by Ansh and added to SUBMISSION §4/§10 (URL returns 200).
+- Left for Ansh: commit + merge to `main` + tag `v1.0` + push; YouTube upload; blog posts 2 and 3; fill the three `<...>` URLs; submit on Devpost.
 
 ### 2026-09-13 about 22:10 PDT — Gate 6 accepted; Phase 7 started
 - Ansh's decision: accept Gate 6 with red-flag recall at 90.0% (target 100%); he doesn't expect further changes to reach 100%. Say 90% in every submission text.
@@ -1074,7 +1087,7 @@ decision").
 - [x] Phase 6: commit `phase6`; `make deploy` (dispatcher fixes + alarms); `make web-deploy` (2026-09-13)
 - [x] Phase 6: SNS email subscription; push to `main`, CI green; history rewritten; repo public (2026-09-13)
 - [ ] After Phase 7 is submitted: delete `~/Projects/doorstep-old` and `~/Projects/doorstep-backup.git`
-- [ ] **Before submitting: swap in a real second Telegram account.** See "Second-number swap"
+- [x] **Before submitting: swap in a real second Telegram account.** (iPad, 2026-09-14) See "Second-number swap"
       below — it is one `.env` line, and it makes the role check visibly real in the demo.
 - [x] **Phase 5 Gate 5 (human half):** laptop 1:39, phone 1:07 (2026-09-13)
 - [ ] Phase 5: review the working tree on `phase5` and commit it yourself

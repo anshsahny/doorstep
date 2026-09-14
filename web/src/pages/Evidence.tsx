@@ -18,7 +18,7 @@ export function Evidence() {
   }, []);
 
   return (
-    <div className="flex max-w-4xl flex-col gap-5">
+    <div className="flex w-full flex-col gap-5">
       <div>
         <h1 tabIndex={-1} className="text-2xl font-bold">
           Evidence

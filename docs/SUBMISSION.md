@@ -55,7 +55,7 @@ Framing: the same heat dome hit Portland, which is why the replay uses the real 
 **Name:** Doorstep
 **Tagline:** When a heat warning hits, Doorstep checks on every at-risk neighbour — and only asks a human when it matters.
 
-**Inspiration.** In the 2021 heat dome, 619 people died in British Columbia alone. Almost all of them died at home, more than half of them alone. The warnings went out; what didn't happen, fast enough, was someone checking on them. Neighbourhood teams keep lists of the people most at risk, but a phone tree run by one volunteer on a hot afternoon doesn't scale.
+**Inspiration.** In the 2021 heat dome, 619 people died in British Columbia alone. 98% of them died indoors, and more than half lived alone. The warnings went out; what didn't happen, fast enough, was someone checking on them. Neighbourhood teams keep lists of the people most at risk, but a phone tree run by one volunteer on a hot afternoon doesn't scale.
 
 **What it does.** Doorstep is a Good Neighbor agent built with the **Strands Agents SDK**. It watches National Weather Service alerts for a volunteer group's area. Each hazard is a plug-in profile: extreme heat ships fully tested; extreme cold, smoke and power shutoffs are roadmap profiles, not built. When a warning hits, it:
 - ranks the group's opt-in list by risk (age, living alone, no AC);
@@ -104,9 +104,9 @@ It interrupts the block captain only for the decisions a human must make: an urg
 - Live: https://d3fia1jq6liv5t.cloudfront.net
 - Repo: https://github.com/anshsahny/doorstep
 - Blog 1: https://builder.aws.com/content/3JGXWIyhgd50C2viO3fHFXM74aE/agents-for-humans-ai-agents-that-check-on-neighbourhood-residents-during-a-heat-wave
-- Blog 2: (URL not in the repo; add it)
-- Blog 3: (add when published)
-- Video: (add after upload)
+- Blog 2: https://builder.aws.com/content/3JKG2tNTQWAICanKIpDCJsYSEYe/agents-for-humans-pausing-a-strands-agent-for-human-verification-and-resuming-after-a-tap
+- Blog 3: `<BLOG_3_URL>`
+- Video: `<YOUTUBE_URL>`
 
 **Testing instructions:**
 1. Open https://d3fia1jq6liv5t.cloudfront.net (Chrome or Safari; allow the microphone for step 3).
@@ -114,21 +114,23 @@ It interrupts the block captain only for the decisions a human must make: an urg
 3. When the call panel appears, click **Answer as <name>** to talk to Doorstep as that resident. Try saying you feel dizzy and confused: the captain is paged before you hang up.
 4. Approve a decision in the inbox.
 5. Open **Report**, **Policies** and **Evidence**.
-6. Captain view: passcode `<paste CAPTAIN_PASSCODE from .env into Devpost only; never commit it>`.
+6. Captain view (**Captain mode** link at the bottom of the home page): passcode `<paste CAPTAIN_PASSCODE from .env into Devpost only; never commit it>`. Optional: after signing in, enter incident `drill-20260914-065148-ce60` to see the cloud drill from the video, where the captain and a volunteer answered by real Telegram taps.
 7. The sandbox never places real calls or sends Telegram messages; the video shows the real phone path. All data is fictional. Drills and voice calls have daily caps; if one is reached, the site says so and offers a recorded drill.
 
 ## 5. Video script (target 4:40, hard max 5:00)
 
 | Time | Visual | Voiceover (short) |
 |---|---|---|
-| 0:00–0:20 | Phone rings on the desk. Answer on speaker: Doorstep's check-in, as "Mrs. Chen". Red-flag phrase, then the captain's phone buzzes. | (No voiceover; let the call play.) |
-| 0:20–0:30 | Title card: "Doorstep — built with Strands Agents on AWS" | "That call was made by an agent, not a person." |
-| 0:30–1:10 | Stats on screen (sources cited on screen) | 619 deaths, 98% at home, 56% alone. Alerts went out; check-ins didn't. Who it's for: the volunteer captain with a list and a day job. |
+| 0:00–0:20 | Real phone call on speaker (bridge + ngrok running; number masked). Doorstep's check-in; you say "I feel dizzy and confused, I'm not sure what day it is". Captain's Telegram buzzes **before** you hang up. | (No voiceover; let the call play.) |
+| 0:20–0:30 | Title card: "Doorstep — built with Strands Agents on AWS" | "That call was made by an agent, not a person. And it paged a human before the call ended." |
+| 0:30–1:10 | Stats on screen (sources cited on screen) | 619 deaths, 98% indoors, 56% alone. Alerts went out; check-ins didn't. Who it's for: the volunteer block captain with a list and a day job. |
 | 1:10–1:25 | Home page | What Doorstep does, in one sentence. |
-| 1:25–3:20 | Live demo | 1. Replay the 2021 Portland warning → activation with its reasoning. 2. Door grid fills; triage waves. 3. One Spanish call. 4. Urgent flag → Telegram decision → captain taps "Send Tom" → volunteer taps "They're OK". 5. Policy panel: denial of a group broadcast with personal details; agent rewrites. 6. Incident report: [N] minutes vs. ~3 hours, [k] human decisions. |
-| 3:20–4:10 | Architecture diagram, then code flashes; 10-second shot of `heat.yaml` (cold, smoke, power shutoffs named as roadmap profiles) | Strands Graph, interrupts + sessions, Cedar, BidiAgent on Nova 2 Sonic; AgentCore Runtime, Observability traces. "Every hazard is a profile: same agent, different questions and danger signs." |
-| 4:10–4:30 | Evidence page | 40 simulated residents: red-flag recall, zero policy violations, injection attempts blocked. |
-| 4:30–4:50 | Closing | Why it matters, what's next (pilots, Canada), live link. |
+| 1:25–3:20 | Live demo on the deployed site | 1. **Run a drill**: your own sandbox of 12 fictional residents against the real June 2021 NWS Portland heat warning (the alert shows at the top of the board). 2. Door grid fills in risk order; open one door to show why that resident was called when they were and each step the agent took. 3. **Answer as \<name\>**: browser voice call on Nova 2 Sonic; say you feel dizzy and confused; the decision lands in the inbox while you're still on the call. When it repeats the 911 line, say "okay, thank you". 4. Inbox: answer the **first** card (captain). Say the real Telegram version is what you saw in the cold open. 5. **Policies**: the written Cedar rules and their named tests; voiceover the red-team example from Evidence (the agent tried to phone a number not on the allowlist; Cedar denied it and logged why). 6. **Report**: "all 12 reached" in about a minute and a half, how many decisions a person made, and how many are still waiting. |
+| 3:20–4:10 | Architecture diagram, then code flashes; 10-second shot of `heat.yaml` (cold, smoke, power shutoffs named as roadmap profiles) | Strands Graph, interrupts + sessions, Cedar on every tool call, BidiAgent on Nova 2 Sonic; AgentCore Runtime, Observability traces. Memory is roadmap. "Every hazard is a profile: same agent, different questions and danger signs." |
+| 4:10–4:30 | Evidence page | 40 simulated residents. "90% red-flag recall; every red flag a resident actually said was caught." 20 of 20 forbidden actions refused, 0 policy violations. The full 2021 replay: 48 residents, first call in 7 s, everyone reached or escalated in a projected 27.9 minutes on 6 lines vs about 3.2 hours by phone tree, 18 human decisions. |
+| 4:30–4:50 | Closing | Why it matters, what's next (pilots, Canadian alerts, more hazard profiles), live link and repo. |
+
+Do not say or show: 100% recall; a Spanish call (untested on voice); two separate Telegram phones (one phone plays both roles); an agent "rewriting" a denied broadcast; "3 hours" next to the 12-resident drill report; `docs/local-drill.png`.
 
 Recording tips:
 - Record the phone call with the phone on speaker next to a good microphone.
@@ -188,13 +190,56 @@ Each post: 600–1,000 words, one diagram or screenshot, a link to the repo and 
 
 Use AWS architecture icons (draw.io). Commit both the source file and a PNG.
 
-## 9. Final pre-submit checklist (Monday)
+## 9. Final pre-submit checklist (checked 2026-09-14 about 00:30 PDT)
 
-- [ ] Live URL works in incognito; sandbox drill completes; voice works; caps return a friendly message
-- [ ] The repo's About section shows MIT; the README renders; no secrets (run gitleaks again)
-- [ ] Video is public, under 5:00, with captions; links in the description
-- [ ] All three blog posts are public, with "Agents for Humans" in the titles; URLs collected
-- [ ] Every Devpost field is filled; track set to Good Neighbor; Builder ID email; screenshots (door grid, Telegram decision, policy denial, report, traces); diagram uploaded
-- [ ] Testing instructions include the passcode
+- [x] Live URL works; recorded drill renders; caps and kill switch return a friendly message (`make cap-test` 15/15 on the deployed API, kill switch restored to `off`). Sandbox drill and browser voice last completed in the video takes the same night.
+- [x] The repo's About section shows MIT; the README renders; gitleaks clean over all refs (38 commits)
+- [ ] Video is public, under 5:00, captions on; live link and repo in the description (§10)
+- [ ] All three blog posts are public, with "Agents for Humans" in the titles; URLs collected (posts 1 and 2 public; 3 pending)
+- [ ] Every Devpost field is filled (§10)
+- [ ] Testing instructions include the passcode (paste from `.env`, never commit it)
 - [ ] Submitted, then the confirmation page re-checked
-- [ ] Budget alarms on; infrastructure stays up until Oct 8; `main` frozen
+- [x] Budget alarms on; infrastructure stays up until Oct 8
+- [ ] `v1.0` tagged and pushed; `main` frozen
+
+## 10. Ready to submit
+
+Everything below is final except the two `<...>` values Ansh adds: `<YOUTUBE_URL>` and `<BLOG_3_URL>`.
+
+### YouTube upload
+- **Title:** Doorstep — an agent that checks on neighbours during a heat wave (Strands Agents on Amazon Bedrock AgentCore)
+- **Visibility:** Public (not unlisted). Not made for kids. Captions: auto-generated, then review the transcript for "Doorstep", "Strands", "AgentCore", "Nova", "Cedar".
+- **Description:**
+
+  > When a heat warning hits, Doorstep phones every at-risk neighbour on a volunteer group's list, sorts who is OK from who isn't, sends a volunteer to the doors that need a knock, and interrupts the block captain only for the decisions a person must make.
+  >
+  > Built with the Strands Agents SDK on Amazon Bedrock AgentCore, Amazon Nova 2 Lite and Nova 2 Sonic, Cedar policies, Twilio and Telegram. Entry for the AWS "Agents for Humans" hackathon, Good Neighbor track.
+  >
+  > Try it: https://d3fia1jq6liv5t.cloudfront.net
+  > Code (MIT): https://github.com/anshsahny/doorstep
+  >
+  > All residents shown are fictional. The alert replayed is the real, public NWS Portland Excessive Heat Warning of June 2021. Doorstep never calls 911 itself: it tells the resident to call and pages a person. Heat-dome figures: BC Coroners Service, Extreme Heat Death Review Panel.
+
+### Devpost, field by field
+| Field | Value |
+|---|---|
+| Project name | Doorstep |
+| Elevator pitch / tagline | §4 tagline |
+| Track | **Good Neighbor Agents** |
+| About the project | §4 from **Inspiration** through **What's next** (Devpost headings: Inspiration, What it does, How we built it, Challenges we ran into, Accomplishments that we're proud of, What we learned, What's next) |
+| Built with | §4 Built with list, one tag at a time |
+| "Try it out" links | Live site; GitHub repo; blog posts 1–3 |
+| Video demo link | `<YOUTUBE_URL>` |
+| Image gallery | the files in "Screenshots" below, in that order |
+| Architecture diagram | `docs/architecture.png` |
+| Testing instructions | §4 Testing instructions, with the captain passcode pasted from `.env` `CAPTAIN_PASSCODE` |
+| AWS Builder ID email | Ansh's Builder ID email (enter by hand) |
+| Deployed on AgentCore? | Yes: coordinator and browser voice run on AgentCore Runtime; Observability on |
+| Blog post URLs | post 1: https://builder.aws.com/content/3JGXWIyhgd50C2viO3fHFXM74aE/agents-for-humans-ai-agents-that-check-on-neighbourhood-residents-during-a-heat-wave · https://builder.aws.com/content/3JKG2tNTQWAICanKIpDCJsYSEYe/agents-for-humans-pausing-a-strands-agent-for-human-verification-and-resuming-after-a-tap · `<BLOG_3_URL>` |
+| AI tools disclosure | Claude Code used as a coding assistant during the submission period; adapted samples as in the README Disclosures |
+
+### Screenshots (1600×1000, taken from the live site's recorded drill, $0)
+Produced outside the repo (screenshots are not committed): `home.png`, `board.png` (door grid), `decisions.png`, `policies.png` (Cedar rules), `report.png`, `evidence.png`, plus `docs/architecture.png`. Telegram: take a frame of the captain's "Send Tom" card and Tom's task from the video footage; do not use a frame that shows the model-written "911 call" button.
+
+### Judging-period headroom (2026-09-14 about 00:30 PDT)
+Sandbox drills used 13 of 120 for the whole period (daily cap 15, resets 17:00 PDT); voice calls 17 of 120. Kill switch `off`. Budget `doorstep-monthly` $25 with alerts; three CloudWatch alarms OK.

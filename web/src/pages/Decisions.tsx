@@ -9,7 +9,7 @@ export function Decisions() {
   const done = visible.filter((d) => d.status !== "pending").reverse();
 
   return (
-    <div className="flex max-w-3xl flex-col gap-4">
+    <div className="flex w-full flex-col gap-4">
       <h1 tabIndex={-1} className="text-2xl font-bold">
         Decisions
       </h1>
